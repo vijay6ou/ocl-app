@@ -1,0 +1,22 @@
+# Keep line endings correct across Windows (development) and Linux (the VPS).
+#
+# This matters: deploy/*.sh run on the server, and CRLF line endings make bash
+# fail with "bad interpreter" or stray \r errors. gradlew must also stay LF.
+
+* text=auto
+
+# Shell scripts and Gradle's launcher must be LF, always.
+*.sh        text eol=lf
+gradlew     text eol=lf
+Dockerfile  text eol=lf
+Caddyfile   text eol=lf
+
+# Windows batch files must be CRLF.
+*.bat       text eol=crlf
+
+# Binary — never touched.
+*.png       binary
+*.jpg       binary
+*.jks       binary
+*.apk       binary
+*.jar       binary

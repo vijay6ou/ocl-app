@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OCL Maintenance — Admin</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --navy: #0d1b2a; --navy2: #1a2e42; --blue: #1565c0; --blue2: #1e88e5;
+            --green: #2e7d32; --red: #c62828; --amber: #e65100; --border: #cfd8dc;
+            --surface: #f4f6f8; --gray: #37474f;
+        }
+        body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--surface); color: var(--navy); }
+
+        /* ── login ── */
+        #login { position: fixed; inset: 0; background: var(--navy); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        #login .box { background: #fff; border-radius: 14px; padding: 26px; width: 100%; max-width: 380px; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+        #login h1 { font-size: 19px; margin-bottom: 4px; }
+        #login p.sub { font-size: 13px; color: #78909c; margin-bottom: 18px; }
+        label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #607d8b; margin: 12px 0 5px; }
+        input, select, textarea { width: 100%; padding: 10px 11px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--navy); background: #fff; outline: none; }
+        input:focus, select:focus, textarea:focus { border-color: var(--blue2); }
+        button { padding: 11px 16px; border: none; border-radius: 8px; background: var(--blue); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        button:hover { background: var(--blue2); }
+        button.ghost { background: #fff; color: var(--gray); border: 1.5px solid var(--border); }
+        button.ghost:hover { border-color: var(--blue2); color: var(--blue); background: #fff; }
+        button.danger { background: var(--red); }
+        button.danger:hover { background: #e53935; }
+        button.sm { padding: 6px 11px; font-size: 12px; border-radius: 6px; }
+        .err { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+        /* ── app shell ── */
+        header { background: var(--navy); color: #fff; padding: 12px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; position: sticky; top: 0; z-index: 20; }
+        header h1 { font-size: 16px; font-weight: 700; }
+        header .spacer { flex: 1; }
+        header .who { font-size: 12px; color: #b0bec5; }
+        nav { display: flex; gap: 4px; background: #fff; padding: 0 12px; border-bottom: 1px solid var(--border); overflow-x: auto; position: sticky; top: 52px; z-index: 19; }
+        nav button { background: none; color: #607d8b; border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 12px 14px; font-size: 13px; white-space: nowrap; }
+        nav button:hover { background: none; color: var(--blue); }
+        nav button.on { color: var(--navy); border-bottom-color: var(--blue); }
+        main { padding: 18px; max-width: 1150px; margin: 0 auto; }
+        .panel { display: none; }
+        .panel.on { display: block; }
+        .card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+        .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .8px; color: #607d8b; margin-bottom: 12px; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .row > * { flex: 1; min-width: 130px; }
+        .row > button { flex: 0 0 auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #78909c; padding: 8px 8px; border-bottom: 2px solid var(--border); }
+        td { padding: 8px 8px; border-bottom: 1px solid #eceff1; vertical-align: top; }
+        tr:hover td { background: #fafbfc; }
+        .pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+        .pill.g { background: #e8f5e9; color: var(--green); }
+        .pill.r { background: #ffebee; color: var(--red); }
+        .pill.b { background: #e3f2fd; color: var(--blue); }
+        .pill.n { background: #eceff1; color: #607d8b; }
+        .muted { color: #90a4ae; font-size: 12px; }
+        .stat { display: inline-block; margin-right: 22px; }
+        .stat b { display: block; font-size: 22px; }
+        .stat span { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #78909c; }
+        pre { background: var(--navy); color: #b0bec5; padding: 12px; border-radius: 8px; font-size: 11px; overflow: auto; max-height: 340px; }
+        .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #263238; color: #fff; padding: 11px 18px; border-radius: 22px; font-size: 13px; z-index: 60; opacity: 0; transition: opacity .25s; pointer-events: none; }
+        .toast.on { opacity: 1; }
+        details { border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+        summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+    </style>
+</head>
+
+<body>
+
+    <!-- ══ LOGIN ══ -->
+    <div id="login">
+        <div class="box">
+            <h1>OCL Maintenance</h1>
+            <p class="sub">Administrator sign-in</p>
+            <label for="u">Username</label>
+            <input id="u" autocomplete="username" />
+            <label for="p">Password</label>
+            <input id="p" type="password" autocomplete="current-password" />
+            <div class="err" id="loginErr"></div>
+            <button style="width:100%;margin-top:14px" onclick="doLogin()">Sign in</button>
+        </div>
+    </div>
+
+    <!-- ══ APP ══ -->
+    <div id="app" style="display:none">
+        <header>
+            <h1>⚡ OCL Maintenance — Admin</h1>
+            <span class="spacer"></span>
+            <span class="who" id="who"></span>
+            <button class="ghost sm" onclick="openPw()">Change password</button>
+            <button class="ghost sm" onclick="logout()">Sign out</button>
+        </header>
+        <nav>
+            <button class="on" onclick="show('dash', this)">Dashboard</button>
+            <button onclick="show('recs', this)">Records</button>
+            <button onclick="show('cfg', this)">Checklist</button>
+            <button onclick="show('users', this)">Users</button>
+            <button onclick="show('rel', this)">App releases</button>
+            <button onclick="show('audit', this)">Activity</button>
+        </nav>
+        <main>
+
+            <!-- dashboard -->
+            <section class="panel on" id="p-dash">
+                <div class="card">
+                    <h2>Overview</h2>
+                    <div id="stats" class="muted">Loading…</div>
+                </div>
+                <div class="card">
+                    <h2>Recent submissions</h2>
+                    <div id="recent"></div>
+                </div>
+            </section>
+
+            <!-- records -->
+            <section class="panel" id="p-recs">
+                <div class="card">
+                    <h2>Search records</h2>
+                    <div class="row">
+                        <div><label for="fFrom">From</label><input type="date" id="fFrom" /></div>
+                        <div><label for="fTo">To</label><input type="date" id="fTo" /></div>
+                        <div><label for="fShift">Shift</label>
+                            <select id="fShift">
+                                <option value="">Any</option>
+                                <option>A</option><option>B</option><option>C</option><option>General</option>
+                            </select>
+                        </div>
+                        <div><label for="fQ">Text</label><input id="fQ" placeholder="technician, remarks…" /></div>
+                        <button onclick="loadRecords()">Search</button>
+                        <button class="ghost" onclick="clearFilters()">Clear</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Results <span class="muted" id="recCount"></span></h2>
+                    <div id="recList"></div>
+                </div>
+            </section>
+
+            <!-- checklist -->
+            <section class="panel" id="p-cfg">
+                <div class="card">
+                    <h2>Published checklist</h2>
+                    <div id="cfgInfo" class="muted">Loading…</div>
+                </div>
+                <div class="card">
+                    <h2>Publish a new version</h2>
+                    <p class="muted" style="margin-bottom:10px">
+                        Upload the JSON exported from the phone
+                        (<b>Records → ✏️ Edit fields → ⬇ Download copy</b>).
+                    </p>
+                    <div class="row">
+                        <div><label for="cfgFile">Configuration file (.json)</label><input type="file" id="cfgFile" accept=".json,application/json" /></div>
+                        <div><label for="cfgNote">What changed</label><input id="cfgNote" placeholder="e.g. added HT crusher checks" /></div>
+                        <button onclick="publishCfg()">Publish</button>
+                    </div>
+                    <div id="cfgMsg" class="err"></div>
+                </div>
+                <div class="card">
+                    <h2>Version history</h2>
+                    <div id="cfgHist"></div>
+                </div>
+            </section>
+
+            <!-- users -->
+            <section class="panel" id="p-users">
+                <div class="card">
+                    <h2>Add an account</h2>
+                    <div class="row">
+                        <div><label for="nu">Username</label><input id="nu" placeholder="e.g. vijay" /></div>
+                        <div><label for="nn">Full name</label><input id="nn" placeholder="e.g. M. Vijay" /></div>
+                        <div><label for="np">Password</label><input id="np" type="text" placeholder="min 6 characters" /></div>
+                        <div><label for="nr">Role</label>
+                            <select id="nr"><option value="technician">Technician</option><option value="admin">Admin</option></select>
+                        </div>
+                        <button onclick="addUser()">Create</button>
+                    </div>
+                    <div id="userMsg" class="err"></div>
+                </div>
+                <div class="card">
+                    <h2>Accounts</h2>
+                    <div id="userList"></div>
+                </div>
+            </section>
+
+            <!-- releases -->
+            <section class="panel" id="p-rel">
+                <div class="card">
+                    <h2>Publish an app update</h2>
+                    <p class="muted" style="margin-bottom:10px">
+                        Upload the new APK here. Every phone that opens the app will be told it can update.
+                        The version code must be <b>higher</b> than the one currently installed.
+                    </p>
+                    <div class="row">
+                        <div><label for="rApk">APK file</label><input type="file" id="rApk" accept=".apk" /></div>
+                        <div><label for="rCode">Version code</label><input id="rCode" type="number" min="1" placeholder="4" /></div>
+                        <div><label for="rName">Version name</label><input id="rName" placeholder="2.2.0" /></div>
+                    </div>
+                    <label for="rNotes">What's new</label>
+                    <input id="rNotes" placeholder="e.g. added numeric keypad" />
+                    <label style="margin-top:10px"><input type="checkbox" id="rMand" style="width:auto" /> Mark as mandatory</label>
+                    <div id="relMsg" class="err"></div>
+                    <button style="margin-top:10px" onclick="publishRelease()">Upload &amp; publish</button>
+                </div>
+                <div class="card">
+                    <h2>Published releases</h2>
+                    <div id="relList" class="muted">Loading…</div>
+                </div>
+            </section>
+
+            <!-- audit -->
+            <section class="panel" id="p-audit">
+                <div class="card">
+                    <h2>Activity log</h2>
+                    <div id="auditList" class="muted">Loading…</div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ─── tiny helpers ────────────────────────────────────────────────────
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        let TOKEN = localStorage.getItem('ocl_admin_token') || '';
+        let ME = null;
+
+        function toast(msg) {
+            const t = $('toast');
+            t.textContent = msg;
+            t.classList.add('on');
+            clearTimeout(t._t);
+            t._t = setTimeout(() => t.classList.remove('on'), 2800);
+        }
+
+        async function api(path, opts) {
+            opts = opts || {};
+            const headers = opts.headers || {};
+            if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
+            let body = opts.body;
+            if (body && !(body instanceof FormData)) {
+                headers['Content-Type'] = 'application/json';
+                body = JSON.stringify(body);
+            }
+            const res = await fetch('/api' + path, { method: opts.method || 'GET', headers, body });
+            if (res.status === 401) { logout(true); throw new Error('Session expired — please sign in again.'); }
+            const text = await res.text();
+            let data = null;
+            try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+            if (!res.ok) throw new Error((data && data.error) || ('Request failed (HTTP ' + res.status + ')'));
+            return data;
+        }
+
+        // ─── auth ────────────────────────────────────────────────────────────
+        async function doLogin() {
+            $('loginErr').textContent = '';
+            try {
+                const out = await api('/login', { method: 'POST', body: { username: $('u').value.trim(), password: $('p').value } });
+                TOKEN = out.token;
+                ME = out.user;
+                localStorage.setItem('ocl_admin_token', TOKEN);
+                start();
+            } catch (e) {
+                $('loginErr').textContent = e.message;
+            }
+        }
+        $('p').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+        function logout(silent) {
+            TOKEN = ''; ME = null;
+            localStorage.removeItem('ocl_admin_token');
+            $('app').style.display = 'none';
+            $('login').style.display = 'flex';
+            if (!silent) toast('Signed out.');
+        }
+
+        async function start() {
+            if (!ME) {
+                try { ME = (await api('/me')).user; }
+                catch (e) { logout(true); return; }
+            }
+            $('login').style.display = 'none';
+            $('app').style.display = 'block';
+            $('who').textContent = (ME.displayName || ME.username) + ' · ' + ME.role;
+            loadDash(); loadRecords(); loadCfg(); loadUsers(); loadReleases(); loadAudit();
+        }
+
+        function show(name, btn) {
+            ['dash', 'recs', 'cfg', 'users', 'rel', 'audit'].forEach(n => {
+                $('p-' + n).classList.toggle('on', n === name);
+            });
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('on'));
+            if (btn) btn.classList.add('on');
+        }
+
+        function openPw() {
+            const cur = prompt('Your current password:');
+            if (cur === null) return;
+            const next = prompt('New password (min 6 characters):');
+            if (!next) return;
+            api('/me/password', { method: 'POST', body: { current: cur, next } })
+                .then(() => toast('Password changed.'))
+                .catch(e => alert(e.message));
+        }
+
+        // ─── dashboard ───────────────────────────────────────────────────────
+        async function loadDash() {
+            try {
+                const [dates, recs] = await Promise.all([api('/records/dates'), api('/records?limit=8')]);
+                $('stats').innerHTML =
+                    '<div class="stat"><b>' + dates.total + '</b><span>Submissions</span></div>' +
+                    '<div class="stat"><b>' + dates.dates.length + '</b><span>Days recorded</span></div>' +
+                    '<div class="stat"><b>' + (dates.dates[0] ? esc(dates.dates[0].date) : '—') + '</b><span>Latest date</span></div>';
+                $('recent').innerHTML = recTable(recs.records);
+            } catch (e) { $('stats').textContent = e.message; }
+        }
+
+        function recTable(rows) {
+            if (!rows || !rows.length) return '<p class="muted">No records yet.</p>';
+            return '<table><thead><tr><th>Date</th><th>Shift</th><th>Technician</th><th>Section</th>' +
+                '<th>Complete</th><th>Fails</th><th></th></tr></thead><tbody>' +
+                rows.map(r =>
+                    '<tr><td><b>' + esc(r.date) + '</b></td><td>' + esc(r.shift || '—') + '</td>' +
+                    '<td>' + esc(r.technician || '—') + '</td><td>' + esc(r.form || '—') + '</td>' +
+                    '<td>' + esc(r.pct) + '% <span class="muted">(' + esc(r.done) + '/' + esc(r.total) + ')</span></td>' +
+                    '<td>' + (r.fail_count ? '<span class="pill r">' + r.fail_count + '</span>' : '<span class="pill g">0</span>') + '</td>' +
+                    '<td><button class="ghost sm" onclick="viewRecord(\'' + esc(r.id) + '\')">View</button> ' +
+                    '<button class="danger sm" onclick="delRecord(\'' + esc(r.id) + '\')">Delete</button></td></tr>'
+                ).join('') + '</tbody></table>';
+        }
+
+        // ─── records ─────────────────────────────────────────────────────────
+        async function loadRecords() {
+            const p = new URLSearchParams();
+            if ($('fFrom').value) p.set('from', $('fFrom').value);
+            if ($('fTo').value) p.set('to', $('fTo').value);
+            if ($('fShift').value) p.set('shift', $('fShift').value);
+            if ($('fQ').value.trim()) p.set('q', $('fQ').value.trim());
+            p.set('limit', '300');
+            try {
+                const out = await api('/records?' + p.toString());
+                $('recCount').textContent = '(' + out.count + ' of ' + out.total + ')';
+                $('recList').innerHTML = recTable(out.records);
+            } catch (e) { $('recList').innerHTML = '<p class="muted">' + esc(e.message) + '</p>'; }
+        }
+        function clearFilters() {
+            $('fFrom').value = ''; $('fTo').value = ''; $('fShift').value = ''; $('fQ').value = '';
+            loadRecords();
+        }
+
+        async function viewRecord(id) {
+            try {
+                const out = await api('/records/' + encodeURIComponent(id));
+                const r = out.record;
+                const p = r.payload || {};
+                const fails = p.fails || [];
+                let html = '<details open><summary>' + esc(r.date) + ' · ' + esc(r.form || '') +
+                    ' · ' + esc(r.technician || '') + '</summary>';
+                html += '<p class="muted" style="margin:8px 0">Shift ' + esc(r.shift || '—') +
+                    ' · Supervisor ' + esc(r.supervisor || '—') + ' · ' + esc(r.pct) + '% complete' +
+                    ' · recorded by ' + esc(r.submitted_by || '—') + '</p>';
+                if (fails.length) {
+                    html += '<div class="card" style="background:#fff3f3;border-color:#ffcdd2"><b>⚠ Failures / defects (' +
+                        fails.length + ')</b>' + fails.map(f =>
+                            '<div style="font-size:13px;margin-top:5px"><b>' + esc(f.equipment || '') + '</b> — ' +
+                            esc(f.issue || '') + (f.type ? ' <i>(' + esc(f.type) + ')</i>' : '') + '</div>').join('') + '</div>';
+                }
+                (p.equipRows || []).forEach(e => {
+                    const st = e.status === 'R' ? '<span class="pill g">RUNNING</span>'
+                        : e.status === 'S' ? '<span class="pill b">STOPPED</span>' : '<span class="pill n">PENDING</span>';
+                    html += '<details><summary>' + esc(e.tag || '') + ' — ' + esc(e.name || '') + ' ' + st + '</summary>';
+                    const checks = (e.status === 'S' ? e.stopChecks : e.runChecks) || [];
+                    if (checks.length) {
+                        html += '<table><tbody>' + checks.map(c =>
+                            '<tr><td>' + esc(c.task) + '</td><td style="width:70px">' +
+                            (c.result === 'ok' ? '<span class="pill g">OK</span>'
+                                : c.result === 'fail' ? '<span class="pill r">FAIL</span>'
+                                : '<span class="pill n">—</span>') + '</td></tr>').join('') + '</tbody></table>';
+                    }
+                    if (e.remarks) html += '<p class="muted">Remark: ' + esc(e.remarks) + '</p>';
+                    html += '</details>';
+                });
+                if ((p.commonRows || []).length) {
+                    html += '<details><summary>Common devices (' + p.commonRows.length + ')</summary><table><tbody>' +
+                        p.commonRows.map(c => '<tr><td>' + esc(c.tag) + ' — ' + esc(c.device) + '</td><td style="width:70px">' +
+                            (c.result === 'ok' ? '<span class="pill g">OK</span>'
+                                : c.result === 'fail' ? '<span class="pill r">FAIL</span>'
+                                : '<span class="pill n">—</span>') + '</td></tr>').join('') + '</tbody></table></details>';
+                }
+                html += '<details><summary>Raw data</summary><pre>' + esc(JSON.stringify(p, null, 2)) + '</pre></details>';
+                html += '</details>';
+                const w = window.open('', '_blank');
+                w.document.write('<!DOCTYPE html><html><head><title>Record ' + esc(r.date) +
+                    '</title><style>body{font-family:system-ui,sans-serif;padding:20px;max-width:900px;margin:auto}' +
+                    'table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px;border-bottom:1px solid #eee;text-align:left}' +
+                    '.pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}.pill.g{background:#e8f5e9;color:#2e7d32}' +
+                    '.pill.r{background:#ffebee;color:#c62828}.pill.b{background:#e3f2fd;color:#1565c0}.pill.n{background:#eceff1;color:#607d8b}' +
+                    '.muted{color:#90a4ae;font-size:12px}pre{background:#0d1b2a;color:#b0bec5;padding:10px;border-radius:6px;font-size:11px;overflow:auto}' +
+                    'details{border:1px solid #cfd8dc;border-radius:8px;padding:9px;margin-bottom:8px}summary{cursor:pointer;font-weight:600}' +
+                    '.card{padding:10px;border-radius:8px;margin:8px 0}button{margin-top:14px;padding:9px 15px;border:none;border-radius:7px;background:#1565c0;color:#fff;font-weight:700;cursor:pointer}' +
+                    '@media print{button{display:none}}</style></head><body>' +
+                    '<h2>OCL Maintenance — ' + esc(r.date) + '</h2>' + html +
+                    '<button onclick="window.print()">🖨 Print / Save PDF</button></body></html>');
+                w.document.close();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function delRecord(id) {
+            if (!confirm('Delete this record permanently?\n\nThis cannot be undone.')) return;
+            try { await api('/records/' + encodeURIComponent(id), { method: 'DELETE' }); toast('Record deleted.'); loadRecords(); loadDash(); }
+            catch (e) { alert(e.message); }
+        }
+
+        // ─── checklist ───────────────────────────────────────────────────────
+        async function loadCfg() {
+            try {
+                const out = await api('/config');
+                if (!out.config) {
+                    $('cfgInfo').innerHTML = '<span class="pill n">none</span> ' + esc(out.note || '');
+                } else {
+                    const d = out.config.days || {};
+                    let eq = 0, fields = 0;
+                    Object.keys(d).forEach(k => (d[k].equip || []).forEach(e => {
+                        eq++;
+                        fields += (e.runningParams || []).length + (e.runningChecks || []).length + (e.stoppedChecks || []).length;
+                    }));
+                    $('cfgInfo').innerHTML = '<span class="pill g">published</span> version <b>' +
+                        esc(out.config.version) + '</b><br>' + eq + ' equipment · ' + fields + ' fields' +
+                        '<br><span class="muted">Updated ' + esc(out.config.updatedAt || '') + '</span>';
+                }
+                const h = await api('/config/history');
+                $('cfgHist').innerHTML = (h.history || []).length
+                    ? '<table><thead><tr><th>Version</th><th>Note</th><th>By</th><th>When</th><th></th></tr></thead><tbody>' +
+                      h.history.map(v => '<tr><td>' + (v.active ? '<span class="pill g">active</span> ' : '') + esc(v.version) +
+                          '</td><td>' + esc(v.note || '—') + '</td><td>' + esc(v.created_by || '—') + '</td>' +
+                          '<td class="muted">' + esc(v.created_at) + '</td>' +
+                          '<td>' + (v.active ? '' : '<button class="ghost sm" onclick="activateCfg(\'' + esc(v.version) + '\')">Restore</button>') +
+                          '</td></tr>').join('') + '</tbody></table>'
+                    : '<p class="muted">No versions published yet.</p>';
+            } catch (e) { $('cfgInfo').textContent = e.message; }
+        }
+
+        async function publishCfg() {
+            $('cfgMsg').textContent = '';
+            const file = $('cfgFile').files[0];
+            if (!file) { $('cfgMsg').textContent = 'Choose a configuration file first.'; return; }
+            try {
+                const text = await file.text();
+                let parsed;
+                try { parsed = JSON.parse(text); } catch (e) { $('cfgMsg').textContent = 'That file is not valid JSON.'; return; }
+                const days = parsed.days || parsed;
+                const out = await api('/config', { method: 'POST', body: { days, note: $('cfgNote').value } });
+                toast('Published version ' + out.version);
+                $('cfgFile').value = ''; $('cfgNote').value = '';
+                loadCfg();
+            } catch (e) { $('cfgMsg').textContent = e.message; }
+        }
+
+        async function activateCfg(version) {
+            if (!confirm('Restore version ' + version + '?\n\nEvery phone will receive it on next sync.')) return;
+            try { await api('/config/activate', { method: 'POST', body: { version } }); toast('Restored.'); loadCfg(); }
+            catch (e) { alert(e.message); }
+        }
+
+        // ─── users ───────────────────────────────────────────────────────────
+        async function loadUsers() {
+            try {
+                const out = await api('/users');
+                $('userList').innerHTML = '<table><thead><tr><th>Username</th><th>Name</th><th>Role</th>' +
+                    '<th>Status</th><th>Last sign-in</th><th></th></tr></thead><tbody>' +
+                    out.users.map(u => '<tr><td><b>' + esc(u.username) + '</b></td><td>' + esc(u.display_name || '—') + '</td>' +
+                        '<td>' + (u.role === 'admin' ? '<span class="pill b">admin</span>' : '<span class="pill n">technician</span>') + '</td>' +
+                        '<td>' + (u.active ? '<span class="pill g">active</span>' : '<span class="pill r">disabled</span>') + '</td>' +
+                        '<td class="muted">' + esc(u.last_login_at || 'never') + '</td>' +
+                        '<td><button class="ghost sm" onclick="resetPw(' + u.id + ',\'' + esc(u.username) + '\')">Reset password</button> ' +
+                        '<button class="ghost sm" onclick="toggleUser(' + u.id + ',' + (u.active ? 'false' : 'true') + ')">' +
+                        (u.active ? 'Disable' : 'Enable') + '</button> ' +
+                        '<button class="ghost sm" onclick="setRole(' + u.id + ',\'' + (u.role === 'admin' ? 'technician' : 'admin') + '\')">' +
+                        (u.role === 'admin' ? 'Make technician' : 'Make admin') + '</button></td></tr>').join('') +
+                    '</tbody></table>';
+            } catch (e) { $('userList').innerHTML = '<p class="muted">' + esc(e.message) + '</p>'; }
+        }
+
+        async function addUser() {
+            $('userMsg').textContent = '';
+            try {
+                await api('/users', { method: 'POST', body: {
+                    username: $('nu').value.trim(), displayName: $('nn').value.trim(),
+                    password: $('np').value, role: $('nr').value,
+                }});
+                toast('Account created.');
+                $('nu').value = ''; $('nn').value = ''; $('np').value = '';
+                loadUsers();
+            } catch (e) { $('userMsg').textContent = e.message; }
+        }
+
+        async function resetPw(id, username) {
+            const pw = prompt('New password for "' + username + '" (min 6 characters):');
+            if (!pw) return;
+            try { await api('/users/' + id + '/password', { method: 'POST', body: { password: pw } }); toast('Password reset.'); }
+            catch (e) { alert(e.message); }
+        }
+
+        async function toggleUser(id, active) {
+            try { await api('/users/' + id + '/active', { method: 'POST', body: { active } }); toast(active ? 'Enabled.' : 'Disabled.'); loadUsers(); }
+            catch (e) { alert(e.message); }
+        }
+
+        async function setRole(id, role) {
+            try { await api('/users/' + id + '/role', { method: 'POST', body: { role } }); toast('Role changed.'); loadUsers(); }
+            catch (e) { alert(e.message); }
+        }
+
+        // ─── releases ────────────────────────────────────────────────────────
+        async function loadReleases() {
+            try {
+                const out = await api('/app/releases');
+                $('relList').innerHTML = (out.releases || []).length
+                    ? '<table><thead><tr><th>Version</th><th>Code</th><th>Notes</th><th>Published</th><th></th></tr></thead><tbody>' +
+                      out.releases.map(r => '<tr><td><b>' + esc(r.version_name) + '</b>' + (r.mandatory ? ' <span class="pill r">mandatory</span>' : '') +
+                          '</td><td>' + esc(r.version_code) + '</td><td>' + esc(r.notes || '—') + '</td>' +
+                          '<td class="muted">' + esc(r.created_at) + '</td>' +
+                          '<td><a href="' + esc(r.url) + '">Download</a></td></tr>').join('') + '</tbody></table>'
+                    : '<p class="muted">No releases published yet.</p>';
+            } catch (e) { $('relList').innerHTML = '<p class="muted">' + esc(e.message) + '</p>'; }
+        }
+
+        async function publishRelease() {
+            $('relMsg').textContent = '';
+            const f = $('rApk').files[0];
+            if (!f) { $('relMsg').textContent = 'Choose an APK file.'; return; }
+            if (!$('rCode').value || !$('rName').value.trim()) { $('relMsg').textContent = 'Version code and version name are required.'; return; }
+            const fd = new FormData();
+            fd.append('apk', f);
+            fd.append('versionCode', $('rCode').value);
+            fd.append('versionName', $('rName').value.trim());
+            fd.append('notes', $('rNotes').value);
+            fd.append('mandatory', $('rMand').checked ? 'true' : 'false');
+            try {
+                const res = await fetch('/api/app/release', { method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN }, body: fd });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Upload failed.');
+                toast('Release published.');
+                $('rApk').value = ''; $('rCode').value = ''; $('rName').value = ''; $('rNotes').value = '';
+                loadReleases();
+            } catch (e) { $('relMsg').textContent = e.message; }
+        }
+
+        // ─── audit ───────────────────────────────────────────────────────────
+        async function loadAudit() {
+            try {
+                const out = await api('/audit?limit=200');
+                $('auditList').innerHTML = '<table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>' +
+                    out.entries.map(a => '<tr><td class="muted">' + esc(a.at) + '</td><td>' + esc(a.actor || '—') +
+                        '</td><td>' + esc(a.action) + '</td><td class="muted">' + esc(a.detail || '') + '</td></tr>').join('') +
+                    '</tbody></table>';
+            } catch (e) { $('auditList').innerHTML = '<p class="muted">' + esc(e.message) + '</p>'; }
+        }
+
+        // ─── boot ────────────────────────────────────────────────────────────
+        if (TOKEN) start(); else $('login').style.display = 'flex';
+    </script>
+</body>
+
+</html>

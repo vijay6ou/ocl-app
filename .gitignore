@@ -1,0 +1,32 @@
+# ── secrets and clutter ──────────────────────────────────────────────────────
+.env
+*.log
+server/data/
+data/
+backups/
+releases/*.apk
+!releases/.gitkeep
+
+# ── node ─────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── android / gradle ─────────────────────────────────────────────────────────
+.gradle/
+app/app/build/
+app/build/
+app/local.properties
+*.apk
+*.ap_
+*.dex
+*.class
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ── editors and OS ───────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

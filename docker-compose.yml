@@ -1,0 +1,55 @@
+# OCL Maintenance — server stack
+#
+#   caddy  → terminates HTTPS (auto Let's Encrypt for the DuckDNS domain),
+#            reverse-proxies to the API, and serves uploaded APKs.
+#   api    → Node.js + SQLite, holds all records and accounts.
+#
+# Start with:  docker compose up -d --build
+#
+# Required in .env (copy deploy/.env.example → .env):
+#   DOMAIN, ACME_EMAIL, JWT_SECRET
+# Optional:
+#   ADMIN_USERNAME, ADMIN_PASSWORD   (first-run admin account)
+
+services:
+  api:
+    build: ./server
+    image: ocl-maintenance-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATA_DIR: /data
+      RELEASES_DIR: /app/releases
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      TOKEN_TTL: ${TOKEN_TTL:-30d}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      - ocl-data:/data
+      - ./releases:/app/releases
+    expose:
+      - "3000"
+    # No published port: the API is only reachable through Caddy.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set in .env (e.g. ocl-plant.duckdns.org)}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./releases:/srv/releases:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  ocl-data:
+  caddy-data:
+  caddy-config:

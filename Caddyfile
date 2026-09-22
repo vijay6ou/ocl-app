@@ -1,0 +1,39 @@
+# Caddy configuration for OCL Maintenance.
+#
+# Caddy obtains and renews the Let's Encrypt certificate for {$DOMAIN}
+# automatically — nothing to renew by hand, ever.
+
+{$DOMAIN} {
+	encode gzip
+
+	# Security headers. The app is an APK, not a web app, so a strict CSP is fine
+	# for the admin page and keeps third-party scripts out.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# ── uploaded APKs, served directly by Caddy ──────────────────────────────
+	handle /releases/* {
+		root * /srv/releases
+		header Content-Type application/vnd.android.package-archive
+		file_server
+	}
+
+	# ── everything else goes to the API / admin page ─────────────────────────
+	handle {
+		reverse_proxy api:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}

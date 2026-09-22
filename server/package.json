@@ -1,0 +1,24 @@
+{
+  "name": "ocl-maintenance-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OCL Maintenance backend — checklist records, field configuration, users and app releases",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node test/api.test.js",
+    "hash": "node src/hashpw.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0"
+  }
+}
