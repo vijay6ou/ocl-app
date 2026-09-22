@@ -114,20 +114,54 @@ sudo docker compose exec api node -e "
 
 ### Backups
 
-The database is one file. Take a copy whenever you like:
+A backup is taken automatically before every deploy, kept in
+`/opt/ocl-maintenance/backups/` (the 14 most recent).
+
+**Do not back up by copying `ocl.db` on its own.** This database runs in WAL
+mode, so committed rows may live in `ocl.db-wal` while `ocl.db` holds only a few
+kilobytes of empty schema — a plain copy can look like a valid backup and contain
+nothing. That mistake was made once during setup and is why `deploy/update.sh`
+now uses SQLite's own backup API.
+
+To take one by hand:
 
 ```bash
 cd /opt/ocl-maintenance
-sudo docker compose exec -T api node -e "require('fs').copyFileSync('/data/ocl.db','/data/bk.db')"
-sudo docker cp \$(sudo docker compose ps -q api):/data/bk.db ./ocl-backup-\$(date +%F).db
-sudo docker compose exec -T api rm -f /data/bk.db
+STAMP=$(date +%F-%H%M)
+sudo docker exec ocl-maintenance-api-1 node src/db.js backup /data/bk.db
+sudo docker cp ocl-maintenance-api-1:/data/bk.db "backups/ocl-${STAMP}.db"
+sudo docker exec ocl-maintenance-api-1 rm -f /data/bk.db
+ls -l "backups/ocl-${STAMP}.db"
 ```
 
-**Copy that file off the server** (email it, put it on a USB stick). A backup that
+A healthy backup is roughly **160 KB and growing**. If you see one of about
+**4 KB, it is empty** — something went wrong, do not rely on it.
+
+**Copy backups off the server** (email, USB stick, cloud drive). A backup that
 only exists on the same disk is not a backup.
 
-To restore: stop the stack, replace the volume's `ocl.db` with the backup, start
-again.
+To restore: stop the stack, put the backup in the volume as `ocl.db`, and start
+again:
+
+```bash
+cd /opt/ocl-maintenance
+sudo docker compose down
+sudo docker run --rm -v ocl-maintenance_ocl-data:/data -v "$PWD/backups:/bk" \
+  alpine sh -c 'cp /bk/ocl-YOUR-BACKUP.db /data/ocl.db && rm -f /data/ocl.db-wal /data/ocl.db-shm'
+sudo docker compose up -d
+```
+
+To verify a backup really contains your data before trusting it:
+
+```bash
+sudo docker cp backups/ocl-YOUR-BACKUP.db ocl-maintenance-api-1:/data/check.db
+sudo docker exec ocl-maintenance-api-1 node -e "
+  const D=require('better-sqlite3');const d=new D('/data/check.db',{readonly:true});
+  console.log('users:',d.prepare('SELECT COUNT(*) n FROM users').get().n);
+  console.log('records:',d.prepare('SELECT COUNT(*) n FROM records').get().n);
+  console.log('configs:',d.prepare('SELECT COUNT(*) n FROM configs').get().n);d.close();"
+sudo docker exec ocl-maintenance-api-1 rm -f /data/check.db
+```
 
 ### Updating the code
 
