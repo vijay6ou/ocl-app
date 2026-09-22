@@ -39,8 +39,8 @@ public class MainActivity extends Activity {
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     /** Bumped by hand each release; the web layer reads these to detect updates. */
-    private static final String BUILD_VERSION_NAME = "2.1.0";
-    private static final int BUILD_VERSION_CODE = 3;
+    private static final String BUILD_VERSION_NAME = "3.1.0";
+    private static final int BUILD_VERSION_CODE = 5;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override

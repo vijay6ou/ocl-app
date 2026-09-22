@@ -1,69 +1,79 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-#  OCL Maintenance — update a running server
+#  OCL Maintenance — update a running deployment
 #
-#  Run on the VPS after pulling new code:
+#  Run on the server after pulling new code:
 #      cd /opt/ocl-maintenance && bash deploy/update.sh
 #
-#  GitHub Actions runs exactly this on every push to main.
-#  Safe to run repeatedly; it backs the database up before restarting.
+#  Safe to run repeatedly. Backs up the database before restarting, and waits
+#  for the API to report healthy so a broken deploy is obvious immediately.
+#
+#  NOTE: this deployment deliberately does NOT touch nginx or any other service
+#  on the host. It only rebuilds and restarts the ocl api container.
 # ═══════════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
 log() { printf '\n\033[1;34m▶ %s\033[0m\n' "$1"; }
 ok()  { printf '\033[1;32m  ✓ %s\033[0m\n' "$1"; }
 warn(){ printf '\033[1;33m  ! %s\033[0m\n' "$1"; }
+die() { printf '\033[1;31m  ✗ %s\033[0m\n' "$1"; exit 1; }
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
-[ -f .env ] || { echo "✗ .env not found. Run deploy/setup-vps.sh first."; exit 1; }
+[ -f .env ] || die ".env not found. Copy deploy/.env.example to .env and set JWT_SECRET."
+grep -q '^JWT_SECRET=.\+' .env || die "JWT_SECRET is empty in .env"
 
-DOCKER="docker"
-docker compose version >/dev/null 2>&1 || DOCKER="docker-compose"
+# Work with either docker compose syntax.
+if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="docker-compose"; fi
 
 # ── 1. back up the database ──────────────────────────────────────────────────
-# Cheap insurance: a copy per deploy, keeping the last 14.
 log "Backing up the database"
 mkdir -p backups
-if [ -f data/ocl.db ]; then
-  STAMP="$(date +%Y%m%d-%H%M%S)"
-  # .backup is SQLite's safe hot-copy; fall back to cp if sqlite3 is absent.
-  if command -v sqlite3 >/dev/null 2>&1; then
-    sqlite3 data/ocl.db ".backup 'backups/ocl-${STAMP}.db'" && ok "backups/ocl-${STAMP}.db"
-  else
-    cp data/ocl.db "backups/ocl-${STAMP}.db" && ok "backups/ocl-${STAMP}.db"
-  fi
-  ls -1t backups/ocl-*.db 2>/dev/null | tail -n +15 | xargs -r rm -f
+STAMP="$(date +%Y%m%d-%H%M%S)"
+if $DC ps api >/dev/null 2>&1 && $DC exec -T api test -f /data/ocl.db 2>/dev/null; then
+  # Copy out of the container via a temporary path (the volume is container-owned).
+  $DC exec -T api node -e "
+    const fs=require('fs');
+    fs.copyFileSync('/data/ocl.db','/data/backup-tmp.db');
+  " 2>/dev/null && docker cp "$($DC ps -q api):/data/backup-tmp.db" "backups/ocl-${STAMP}.db" >/dev/null 2>&1 \
+    && ok "backups/ocl-${STAMP}.db" || warn "could not back up (database may not exist yet)"
+  $DC exec -T api rm -f /data/backup-tmp.db 2>/dev/null || true
 else
-  warn "no database yet — nothing to back up"
+  warn "api container not running yet — nothing to back up"
 fi
+ls -1t backups/ocl-*.db 2>/dev/null | tail -n +15 | xargs -r rm -f
 
 # ── 2. rebuild and restart ───────────────────────────────────────────────────
 log "Building the new image"
-$DOCKER compose build api
+$DC build api
 
-log "Restarting services"
-$DOCKER compose up -d
+log "Restarting"
+$DC up -d
 
 # ── 3. wait for health ───────────────────────────────────────────────────────
 log "Waiting for the API to report healthy"
-for i in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:3000/healthz >/dev/null 2>&1; then
-    ok "API is healthy"
-    break
-  fi
-  if [ "$i" -eq 30 ]; then
-    warn "API did not become healthy in 30 seconds — recent logs:"
-    $DOCKER compose logs --tail 40 api
-    exit 1
-  fi
-  sleep 1
+HEALTHY=0
+for i in $(seq 1 60); do
+  if curl -fsS http://127.0.0.1:3100/healthz >/dev/null 2>&1; then HEALTHY=1; break; fi
+  sleep 2
+done
+if [ "$HEALTHY" -eq 1 ]; then
+  ok "API is healthy on 127.0.0.1:3100"
+else
+  warn "API did not become healthy in 120s — last 40 log lines:"
+  $DC logs --tail 40 api
+  exit 1
+fi
+
+# ── 4. confirm we did not disturb anything else ──────────────────────────────
+log "Confirming other services are untouched"
+for s in nginx cloudflared archive fleet-dashboard; do
+  printf '  %-18s %s\n' "$s" "$(systemctl is-active "$s" 2>/dev/null || echo 'n/a')"
 done
 
-# ── 4. tidy up ───────────────────────────────────────────────────────────────
 log "Cleaning up old images"
 docker image prune -f >/dev/null 2>&1 || true
 
 ok "Deploy complete"
-$DOCKER compose ps
+$DC ps

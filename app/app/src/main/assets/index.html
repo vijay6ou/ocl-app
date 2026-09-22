@@ -6434,14 +6434,84 @@
             deletePolicy: 'ocl_delete_policy',
         };
 
-        // ═══════════════════════════════════════════════════════════════════════════
-        //  VPS BACKEND CLIENT
+        // Mirrored into native SharedPreferences when running inside the Android
+        // shell: WebView localStorage can be evicted (our own onDestroy clears the
+        // cache) and losing a field configuration would be very disruptive.
+        const _nativePrefs = (typeof OCLNative !== 'undefined' && OCLNative
+            && typeof OCLNative.setItem === 'function') ? OCLNative : null;
+
+        // Only durable keys are mirrored — drafts and sheet caches are transient.
+        const MIRRORED_KEYS = ['ocl_records', 'ocl_fieldconfig', 'ocl_sheets_url',
+                               'ocl_quiet_submit', 'ocl_admin_hash', 'ocl_tech_hash',
+                               'ocl_delete_policy'];
+
+        function lsGet(key) {
+            let v = null;
+            try { v = localStorage.getItem(key); } catch (e) { v = null; }
+            if (v === null && _nativePrefs && MIRRORED_KEYS.indexOf(key) !== -1) {
+                try { v = _nativePrefs.getItem(key); } catch (e) { v = null; }
+            }
+            return v;
+        }
+
+        function lsSet(key, val) {
+            try { localStorage.setItem(key, val); } catch (e) { /* quota */ }
+            if (_nativePrefs && MIRRORED_KEYS.indexOf(key) !== -1) {
+                try { _nativePrefs.setItem(key, val); } catch (e) { /* ignore */ }
+            }
+        }
+
+        function lsRemove(key) {
+            try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+            if (_nativePrefs && MIRRORED_KEYS.indexOf(key) !== -1) {
+                try { _nativePrefs.removeItem(key); } catch (e) { /* ignore */ }
+            }
+        }
+
+        function readJSON(key, fallback) {
+            try {
+                const raw = lsGet(key);
+                if (!raw) return fallback;
+                const v = JSON.parse(raw);
+                return (v === null || v === undefined) ? fallback : v;
+            } catch (e) {
+                console.warn('readJSON failed for ' + key, e);
+                return fallback;
+            }
+        }
+
+        function writeJSON(key, val) {
+            try {
+                lsSet(key, JSON.stringify(val));
+                return true;
+            } catch (e) {
+                console.error('writeJSON failed for ' + key, e);
+                return false;
+            }
+        }
+
+        // ─── VPS BACKEND CLIENT ──────────────────────────────────────────────────────
         //  Running against your own server replaces the Google Sheets design
         //  entirely: real accounts, server-held records, per-user permissions and an
         //  update channel. The Sheets code further down remains only as a legacy path
         //  for installs that have not yet been pointed at a server.
         // ═══════════════════════════════════════════════════════════════════════════
         const API_TIMEOUT_MS = 25000;
+
+        // Server address baked in at build time, so a technician has nothing to
+        // type. Applied once per install; an address saved on the device (or
+        // cleared deliberately) always wins afterwards.
+        const DEFAULT_API_URL = '__DEFAULT_API_URL__';
+        const DEFAULT_API_APPLIED = 'ocl_default_api_applied';
+
+        function applyDefaultApiUrl() {
+            if (!DEFAULT_API_URL || DEFAULT_API_URL.indexOf('__') === 0) return;
+            if (lsGet(STORAGE.apiUrl)) return;                 // already configured here
+            if (lsGet(DEFAULT_API_APPLIED) === '1') return;    // user removed it on purpose
+            lsSet(STORAGE.apiUrl, DEFAULT_API_URL);
+            lsSet(DEFAULT_API_APPLIED, '1');
+        }
+        applyDefaultApiUrl();
 
         function apiUrl() { return String(lsGet(STORAGE.apiUrl) || '').replace(/\/+$/, ''); }
         function apiToken() { return String(lsGet(STORAGE.apiToken) || ''); }
@@ -6680,61 +6750,6 @@
         const esc = escapeHtml;
 
         // ─── STORAGE HELPERS ─────────────────────────────────────────────────────────
-        // Mirrored into native SharedPreferences when running inside the Android
-        // shell: WebView localStorage can be evicted (our own onDestroy clears the
-        // cache) and losing a field configuration would be very disruptive.
-        const _nativePrefs = (typeof OCLNative !== 'undefined' && OCLNative
-            && typeof OCLNative.setItem === 'function') ? OCLNative : null;
-
-        // Only durable keys are mirrored — drafts and sheet caches are transient.
-        const MIRRORED_KEYS = ['ocl_records', 'ocl_fieldconfig', 'ocl_sheets_url',
-                               'ocl_quiet_submit', 'ocl_admin_hash', 'ocl_tech_hash',
-                               'ocl_delete_policy'];
-
-        function lsGet(key) {
-            let v = null;
-            try { v = localStorage.getItem(key); } catch (e) { v = null; }
-            if (v === null && _nativePrefs && MIRRORED_KEYS.indexOf(key) !== -1) {
-                try { v = _nativePrefs.getItem(key); } catch (e) { v = null; }
-            }
-            return v;
-        }
-
-        function lsSet(key, val) {
-            try { localStorage.setItem(key, val); } catch (e) { /* quota */ }
-            if (_nativePrefs && MIRRORED_KEYS.indexOf(key) !== -1) {
-                try { _nativePrefs.setItem(key, val); } catch (e) { /* ignore */ }
-            }
-        }
-
-        function lsRemove(key) {
-            try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-            if (_nativePrefs && MIRRORED_KEYS.indexOf(key) !== -1) {
-                try { _nativePrefs.removeItem(key); } catch (e) { /* ignore */ }
-            }
-        }
-
-        function readJSON(key, fallback) {
-            try {
-                const raw = lsGet(key);
-                if (!raw) return fallback;
-                const v = JSON.parse(raw);
-                return (v === null || v === undefined) ? fallback : v;
-            } catch (e) {
-                console.warn('readJSON failed for ' + key, e);
-                return fallback;
-            }
-        }
-
-        function writeJSON(key, val) {
-            try {
-                lsSet(key, JSON.stringify(val));
-                return true;
-            } catch (e) {
-                console.error('writeJSON failed for ' + key, e);
-                return false;
-            }
-        }
 
         // ─── NATIVE PRINT ────────────────────────────────────────────────────────────
         // Android WebView ignores window.print(). When the native shell is present the
