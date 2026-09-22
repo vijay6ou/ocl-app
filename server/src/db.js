@@ -19,6 +19,42 @@ const db = new Database(DB_FILE);
 db.pragma('journal_mode = WAL');     // safe concurrent reads
 db.pragma('foreign_keys = ON');
 
+/**
+ * Consistent snapshot of the database, safe to take while the server is running.
+ *
+ * Do NOT back up by copying ocl.db on its own: in WAL mode the committed rows
+ * live in ocl.db-wal until a checkpoint, so a plain copy of ocl.db can be a few
+ * kilobytes of empty schema while the real data sits in the -wal file. SQLite's
+ * own backup API produces a single self-contained file instead.
+ *
+ * Returns { ok, bytes } or { ok: false, error }.
+ */
+async function backupTo(targetPath, timeoutMs = 30000) {
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+    const started = Date.now();
+    await db.backup(targetPath);
+    const bytes = fs.statSync(targetPath).size;
+    return { ok: true, bytes, ms: Date.now() - started };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// Command-line use, so the deploy script can take a snapshot without needing the
+// sqlite3 CLI installed on the host:
+//   node src/db.js backup /path/to/backup.db
+if (require.main === module && process.argv[2] === 'backup') {
+  const target = process.argv[3];
+  if (!target) { console.error('usage: node src/db.js backup <path>'); process.exit(2); }
+  backupTo(target).then(r => {
+    if (!r.ok) { console.error('backup failed: ' + r.error); process.exit(1); }
+    console.log('backed up ' + r.bytes + ' bytes in ' + r.ms + 'ms -> ' + target);
+    process.exit(0);
+  });
+}
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -271,5 +307,6 @@ const Audit = {
 module.exports = {
   db, DB_FILE, DATA_DIR,
   Users, Records, Configs, Releases, Audit,
+  backupTo,
   now,
 };
