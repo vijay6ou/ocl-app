@@ -131,14 +131,41 @@ again.
 
 ### Updating the code
 
+`/opt/ocl-maintenance` is a **git checkout of this repository**, and the deploy
+key installed on the server already has read/write access — so updating is:
+
 ```bash
+ssh -i <key> ubuntu@158.101.199.190
 cd /opt/ocl-maintenance
-git pull            # if the folder is a git checkout
+git pull origin main
 bash deploy/update.sh
 ```
 
 `update.sh` backs the database up first, rebuilds, restarts, waits for the health
 check, and confirms your other services are still running.
+
+Your `.env` and the database are **not** in git — `.env` is gitignored and the
+database lives in a Docker volume — so pulling and rebuilding cannot lose either.
+
+---
+
+## Automatic deploys (optional, not enabled)
+
+`.github/workflows/deploy.yml` can deploy on every push, but its deploy job stays
+inactive until five secrets exist in
+**GitHub → Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+|---|---|
+| `VPS_HOST` | `158.101.199.190` |
+| `VPS_USER` | `ubuntu` |
+| `VPS_SSH_KEY` | a private key that can log in as that user |
+| `VPS_PATH` | `/opt/ocl-maintenance` |
+| `VPS_PORT` | `22` (optional) |
+
+Until then the deploy job skips itself with a notice — it does not fail the build,
+and the server is untouched. The **test job still runs on every push**, which is
+useful on its own: your API tests are checked automatically.
 
 ---
 
