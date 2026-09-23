@@ -16,6 +16,8 @@
 # next.js
 /.next/
 /out/
+# Rollback stashes written by deploy/update.sh
+/.next.previous-*/
 
 # production
 /build
