@@ -26,9 +26,13 @@ fi
 
 run_as_owner() {
   # Keep node_modules and .next owned by the service user.
+  #
+  # -H matters: this script runs as root, so HOME would otherwise be /root.
+  # npm run as the owner would then try to use /root/.npm as its cache and die
+  # with EACCES, and git would warn about unreadable /root/.config/git.
   local owner
   owner="$(stat -c '%U' "$APP_DIR")"
-  sudo -u "$owner" --preserve-env=PATH,HOME,NODE_ENV "$@"
+  sudo -u "$owner" -H env PATH="$PATH" NODE_ENV="${NODE_ENV:-development}" "$@"
 }
 
 wait_for_health() {
@@ -50,10 +54,16 @@ run_as_owner git pull --ff-only origin main
 # service ended up running a build it could not reproduce.
 log "Installing dependencies (including dev — the build needs them)"
 export NODE_ENV=development
+INSTALL_OK=1
 if [[ -f package-lock.json ]]; then
-  run_as_owner npm ci --include=dev --no-audit --no-fund
+  run_as_owner npm ci --include=dev --no-audit --no-fund || INSTALL_OK=0
 else
-  run_as_owner npm install --include=dev --no-audit --no-fund
+  run_as_owner npm install --include=dev --no-audit --no-fund || INSTALL_OK=0
+fi
+if (( INSTALL_OK == 0 )); then
+  fail "Dependency install failed. The running service was NOT touched — it is"
+  fail "still serving the last good build."
+  exit 1
 fi
 
 log "Pre-flight: build prerequisites"
