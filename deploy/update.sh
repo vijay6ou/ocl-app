@@ -11,7 +11,28 @@
 # back, so a bad commit does not take the plant log down.
 set -euo pipefail
 
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Resolve the app directory before any re-exec, and pass it down: after the
+# re-exec below, BASH_SOURCE points at a temp file and the path would be wrong.
+if [[ -z "${OCL_APP_DIR:-}" ]]; then
+  OCL_APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  export OCL_APP_DIR
+fi
+APP_DIR="$OCL_APP_DIR"
+
+# Re-exec from a snapshot of this script.
+#
+# This file lives in the repo, and the deploy pulls the repo — so without this,
+# `git pull` rewrites update.sh while bash is still reading it, and bash
+# resumes at the old byte offset inside the new file. That produced a mangled
+# run that ignored its own fixes. Running from a temp copy makes the deploy
+# immune to changing itself mid-flight.
+if [[ "${OCL_DEPLOY_SNAPSHOT:-0}" != "1" ]]; then
+  SNAPSHOT="$(mktemp /tmp/ocl-update-XXXXXX.sh)"
+  cp "${BASH_SOURCE[0]}" "$SNAPSHOT"
+  export OCL_DEPLOY_SNAPSHOT=1
+  exec bash "$SNAPSHOT" "$@"
+fi
+
 SERVICE="ocl-technician-log"
 HEALTH="http://127.0.0.1:43127/api/health"
 KEEP_BUILDS=3
@@ -27,12 +48,19 @@ fi
 run_as_owner() {
   # Keep node_modules and .next owned by the service user.
   #
-  # -H matters: this script runs as root, so HOME would otherwise be /root.
-  # npm run as the owner would then try to use /root/.npm as its cache and die
-  # with EACCES, and git would warn about unreadable /root/.config/git.
-  local owner
+  # HOME must be set explicitly: this script runs as root, so an inherited HOME
+  # is /root, and npm run as the owner would try to use /root/.npm as its cache
+  # and die with EACCES (git would also warn about unreadable /root/.config/git).
+  local owner owner_home
   owner="$(stat -c '%U' "$APP_DIR")"
-  sudo -u "$owner" -H env PATH="$PATH" NODE_ENV="${NODE_ENV:-development}" "$@"
+  owner_home="$(getent passwd "$owner" | cut -d: -f6)"
+  [[ -n "$owner_home" ]] || owner_home="/home/$owner"
+  sudo -u "$owner" env \
+    HOME="$owner_home" \
+    PATH="$PATH" \
+    NODE_ENV="${NODE_ENV:-development}" \
+    npm_config_cache="$owner_home/.npm" \
+    "$@"
 }
 
 wait_for_health() {
