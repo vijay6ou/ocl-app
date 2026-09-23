@@ -1,32 +1,61 @@
-# ── secrets and clutter ──────────────────────────────────────────────────────
-.env
-*.log
-server/data/
-data/
-backups/
-releases/*.apk
-!releases/.gitkeep
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# ── node ─────────────────────────────────────────────────────────────────────
-node_modules/
-npm-debug.log*
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# ── android / gradle ─────────────────────────────────────────────────────────
-.gradle/
-app/app/build/
-app/build/
-app/local.properties
-*.apk
-*.ap_
-*.dex
-*.class
-captures/
-.externalNativeBuild/
-.cxx/
+# testing
+/coverage
 
-# ── editors and OS ───────────────────────────────────────────────────────────
-.idea/
-*.iml
-.vscode/
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
 .DS_Store
-Thumbs.db
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# plant server data (seeded on first run)
+/data
+/agent-tools
+
+# Android build
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/android/.idea/
+*.iml
+
+# Android signing material — NEVER commit these.
+# The release keystore is what lets an updated APK install over an already
+# installed one. If it leaks, anyone can sign an app that phones accept as
+# this one; if it is lost, no update can ever be installed again.
+*.jks
+*.keystore
+/android/keystore.properties

@@ -1,96 +1,136 @@
 #!/usr/bin/env bash
-# ═══════════════════════════════════════════════════════════════════════════════
-#  OCL Maintenance — update a running deployment
+# Deploy the plant log from git to the running service.
 #
-#  Run on the server as root (the ubuntu user is not in the docker group here):
+#   cd /opt/ocl-technician-log
+#   sudo bash deploy/update.sh
 #
-#      cd /opt/ocl-maintenance
-#      git pull origin main
-#      sudo bash deploy/update.sh
+# Must run as root: it restarts a systemd service.
 #
-#  Safe to run repeatedly. Backs the database up before restarting and waits for
-#  the API to report healthy, so a broken deploy is obvious immediately.
-#
-#  NOTE: this deployment deliberately does NOT touch nginx or any other service
-#  on the host. It only rebuilds and restarts the ocl api container.
-# ═══════════════════════════════════════════════════════════════════════════════
+# Safety: the current build is moved aside before rebuilding. If the build or
+# the health check fails, the previous build is restored and the service is put
+# back, so a bad commit does not take the plant log down.
 set -euo pipefail
 
-log() { printf '\n\033[1;34m▶ %s\033[0m\n' "$1"; }
-ok()  { printf '\033[1;32m  ✓ %s\033[0m\n' "$1"; }
-warn(){ printf '\033[1;33m  ! %s\033[0m\n' "$1"; }
-die() { printf '\033[1;31m  ✗ %s\033[0m\n' "$1"; exit 1; }
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SERVICE="ocl-technician-log"
+HEALTH="http://127.0.0.1:43127/api/health"
+KEEP_BUILDS=3
 
-[ "$(id -u)" -eq 0 ] || die "Run with sudo:  sudo bash deploy/update.sh"
+log()  { printf '\n=== %s\n' "$*"; }
+fail() { printf '\n!!! %s\n' "$*" >&2; }
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$REPO_DIR"
-
-[ -f .env ] || die ".env not found. Copy deploy/.env.example to .env and set JWT_SECRET."
-grep -q '^JWT_SECRET=.\+' .env || die "JWT_SECRET is empty in .env"
-
-# Work with either docker compose syntax.
-if docker compose version >/dev/null 2>&1; then DC="docker compose"; else DC="docker-compose"; fi
-
-# ── 1. back up the database ──────────────────────────────────────────────────
-# Every step is deliberately non-fatal: a failed backup must never stop a deploy,
-# and on a first run there may be nothing to back up yet.
-#
-# The snapshot uses SQLite's backup API inside the container. Copying ocl.db on
-# its own is NOT safe here: the database runs in WAL mode, so committed rows can
-# live in ocl.db-wal while ocl.db holds only a few kilobytes of empty schema.
-log "Backing up the database"
-mkdir -p backups || true
-STAMP="$(date +%Y%m%d-%H%M%S)"
-BACKED_UP=0
-CID="$($DC ps -q api 2>/dev/null || true)"
-if [ -n "$CID" ]; then
-  if $DC exec -T api node src/db.js backup /data/backup-snapshot.db >/dev/null 2>&1; then
-    if docker cp "${CID}:/data/backup-snapshot.db" "backups/ocl-${STAMP}.db" >/dev/null 2>&1; then
-      SIZE="$(stat -c%s "backups/ocl-${STAMP}.db" 2>/dev/null || echo 0)"
-      ok "backups/ocl-${STAMP}.db (${SIZE} bytes)"
-      BACKED_UP=1
-    fi
-    $DC exec -T api rm -f /data/backup-snapshot.db >/dev/null 2>&1 || true
-  fi
-fi
-[ "$BACKED_UP" -eq 1 ] || warn "no backup taken (container not running, or no database yet)"
-
-# Keep the 14 most recent; never let an empty directory abort the script.
-if ls -1t backups/ocl-*.db >/dev/null 2>&1; then
-  ls -1t backups/ocl-*.db | tail -n +15 | xargs -r rm -f || true
-fi
-
-# ── 2. rebuild and restart ───────────────────────────────────────────────────
-log "Building the new image"
-$DC build api
-
-log "Restarting"
-$DC up -d
-
-# ── 3. wait for health ───────────────────────────────────────────────────────
-log "Waiting for the API to report healthy"
-HEALTHY=0
-for i in $(seq 1 60); do
-  if curl -fsS http://127.0.0.1:3100/healthz >/dev/null 2>&1; then HEALTHY=1; break; fi
-  sleep 2
-done
-if [ "$HEALTHY" -eq 1 ]; then
-  ok "API is healthy on 127.0.0.1:3100"
-else
-  warn "API did not become healthy in 120s — last 40 log lines:"
-  $DC logs --tail 40 api
+if [[ $EUID -ne 0 ]]; then
+  fail "Run with sudo:  sudo bash deploy/update.sh"
   exit 1
 fi
 
-# ── 4. confirm we did not disturb anything else ──────────────────────────────
-log "Confirming other services are untouched"
-for s in nginx cloudflared archive fleet-dashboard; do
-  printf '  %-18s %s\n' "$s" "$(systemctl is-active "$s" 2>/dev/null || echo 'n/a')"
+run_as_owner() {
+  # Keep node_modules and .next owned by the service user.
+  local owner
+  owner="$(stat -c '%U' "$APP_DIR")"
+  sudo -u "$owner" --preserve-env=PATH,HOME,NODE_ENV "$@"
+}
+
+wait_for_health() {
+  for _ in $(seq 1 30); do
+    if curl -fsS --max-time 3 "$HEALTH" >/dev/null 2>&1; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
+cd "$APP_DIR"
+
+log "Fetching latest"
+run_as_owner git pull --ff-only origin main
+
+# devDependencies are required to BUILD (Tailwind runs as a PostCSS plugin and
+# Next type-checks with TypeScript). Installing with NODE_ENV=production omits
+# them and the build then fails — which is exactly how an earlier deploy of this
+# service ended up running a build it could not reproduce.
+log "Installing dependencies (including dev — the build needs them)"
+export NODE_ENV=development
+if [[ -f package-lock.json ]]; then
+  run_as_owner npm ci --include=dev --no-audit --no-fund
+else
+  run_as_owner npm install --include=dev --no-audit --no-fund
+fi
+
+log "Pre-flight: build prerequisites"
+MISSING=()
+for dep in next tailwindcss @tailwindcss/postcss typescript; do
+  [[ -d "node_modules/$dep" ]] || MISSING+=("$dep")
 done
+[[ -x node_modules/.bin/next ]] || MISSING+=("node_modules/.bin/next")
+if (( ${#MISSING[@]} )); then
+  fail "Missing build dependencies: ${MISSING[*]}"
+  fail "The running service was NOT touched — it is still serving the last good build."
+  exit 1
+fi
+printf '  ok — next, tailwind, typescript present\n'
 
-log "Cleaning up old images"
-docker image prune -f >/dev/null 2>&1 || true
+log "Stashing the current build for rollback"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+ROLLBACK=""
+if [[ -d .next ]]; then
+  ROLLBACK=".next.previous-$STAMP"
+  mv .next "$ROLLBACK"
+fi
 
-ok "Deploy complete"
-$DC ps
+restore_previous_build() {
+  fail "$1 — restoring the previous build"
+  if [[ -n "$ROLLBACK" && -d "$ROLLBACK" ]]; then
+    rm -rf .next
+    mv "$ROLLBACK" .next
+    systemctl restart "$SERVICE" || true
+    if wait_for_health; then
+      fail "Rolled back. The plant log is serving the previous build."
+    else
+      fail "Rollback did NOT come up. Check: journalctl -u $SERVICE -n 100"
+    fi
+  else
+    fail "No previous build to restore. Check: journalctl -u $SERVICE -n 100"
+  fi
+  exit 1
+}
+
+# Never leave the service pointing at a directory that is mid-build.
+systemctl stop "$SERVICE" || true
+
+log "Building"
+if ! run_as_owner npm run build; then
+  restore_previous_build "Build failed"
+fi
+
+log "Restarting $SERVICE"
+systemctl start "$SERVICE"
+
+if ! wait_for_health; then
+  restore_previous_build "Service did not become healthy"
+fi
+
+log "Healthy"
+curl -fsS --max-time 5 "$HEALTH"; echo
+
+log "Pruning old builds (keeping $KEEP_BUILDS)"
+mapfile -t OLD < <(ls -1dt .next.previous-* 2>/dev/null | tail -n +$((KEEP_BUILDS + 1)) || true)
+if (( ${#OLD[@]} )); then
+  printf '  removing %s\n' "${OLD[@]}"
+  rm -rf "${OLD[@]}"
+fi
+
+log "Reloading nginx (configuration may reference this service)"
+if nginx -t >/dev/null 2>&1; then
+  systemctl reload nginx
+  printf '  nginx reloaded\n'
+else
+  fail "nginx config invalid — NOT reloading. Run: nginx -t"
+fi
+
+log "Verifying the public endpoints"
+printf '  https://ocl.vishryfarms.com      -> %s\n' \
+  "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 https://ocl.vishryfarms.com/api/health || echo FAIL)"
+printf '  http://158.101.199.190 (phones)  -> %s\n' \
+  "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 http://158.101.199.190/days || echo FAIL)"
+
+log "Done. Deployed $(git rev-parse --short HEAD)"

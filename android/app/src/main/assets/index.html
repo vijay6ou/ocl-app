@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>OCL Maintenance</title>
+  <style>
+    :root { --navy:#0d2137; --gold:#d4a017; --paper:#f7f4ee; --ink:#1a2430; --muted:#5c6670; --line:#d9d3c8; --fail:#b42318; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; min-height:100%; background:var(--paper); color:var(--ink); font-family: system-ui, sans-serif; }
+    button, input, select, textarea { font: inherit; min-height: 44px; font-size: 16px; }
+    button { border:0; border-radius:10px; padding:0 14px; }
+    input, select, textarea { width:100%; border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#fff; }
+    .screen { display:none; min-height:100vh; }
+    .screen.on { display:block; }
+    .navy { background:var(--navy); color:#fff; }
+    .wrap { padding:16px; max-width:720px; margin:0 auto; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .bolt { width:36px; height:36px; border-radius:8px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-weight:700; }
+    h1 { font-size:1.35rem; margin:0 0 6px; }
+    h2 { font-size:1.05rem; margin:0 0 8px; }
+    p.muted { color:var(--muted); margin:0 0 12px; }
+    .card { background:#fff; color:var(--ink); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+    .btn { background:var(--navy); color:#fff; width:100%; font-weight:600; }
+    .btn.gold { background:var(--gold); color:var(--navy); }
+    .btn.ghost { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.35); }
+    .btn.small { width:auto; min-height:40px; }
+    .err { color:var(--fail); font-size:.9rem; min-height:1.2em; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
+    .pill { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
+    .pill.ht { background:#7f1d1d; color:#fff; border:0; }
+    .pill.ok { background:#166534; color:#fff; border:0; }
+    .pill.warn { background:#b45309; color:#fff; border:0; }
+    .day { display:flex; gap:12px; align-items:flex-start; text-decoration:none; color:inherit; }
+    .day .dow { width:48px; height:48px; border-radius:10px; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; }
+    header.bar { position:sticky; top:0; z-index:5; background:var(--navy); color:#fff; padding:10px 16px; display:flex; gap:8px; align-items:center; }
+    header.bar button { min-height:40px; }
+    .equip { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fff; }
+    .equip > summary { list-style:none; padding:12px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    .equip > summary::-webkit-details-marker { display:none; }
+    .body { padding:0 12px 12px; }
+    .tog { display:flex; gap:6px; }
+    .tog button { flex:1; background:#eee; color:var(--ink); }
+    .tog button.on-r { background:#166534; color:#fff; }
+    .tog button.on-s { background:#b45309; color:#fff; }
+    .tog button.on-ok { background:#166534; color:#fff; }
+    .tog button.on-fail { background:#b42318; color:#fff; }
+    .check { border:1px solid var(--line); border-radius:10px; padding:10px; margin:8px 0; }
+    .grid { display:grid; gap:8px; }
+    @media (min-width:520px) { .grid.two { grid-template-columns:1fr 1fr; } }
+    .photos img, .report img { width:96px; height:96px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+    .report table { width:100%; border-collapse:collapse; font-size:13px; }
+    .report td, .report th { border-bottom:1px solid var(--line); padding:4px 0; vertical-align:top; }
+    .report h3 { margin:18px 0 8px; }
+    .fail { color:var(--fail); }
+    .hidden-file { position:absolute; width:1px; height:1px; opacity:0; }
+    .auth { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .auth .card { width:100%; max-width:400px; }
+    label { display:block; font-size:.85rem; margin:10px 0 4px; font-weight:600; }
+  </style>
+</head>
+<body>
+  <section id="auth" class="screen on navy">
+    <div class="auth">
+      <div class="card">
+        <div class="brand" style="margin-bottom:12px;">
+          <div class="bolt">⚡</div>
+          <div>
+            <strong>ORIENT CEMENT LIMITED</strong>
+            <div class="muted" style="color:var(--muted);font-size:.85rem;">Electrical Maintenance System</div>
+          </div>
+        </div>
+        <p class="muted">On this phone until a plant server is saved. Logs stay on-device.</p>
+        <form id="login-form">
+          <label for="user">Username</label>
+          <input id="user" name="username" autocomplete="username" required placeholder="Your plant account" />
+          <label for="pass">Password</label>
+          <input id="pass" name="password" type="password" autocomplete="current-password" required />
+          <p id="login-err" class="err"></p>
+          <button class="btn" type="submit">Sign in</button>
+        </form>
+        <p class="muted" style="margin-top:14px;text-align:center;font-size:.8rem;">OCL · Electrical Department · Chittapur</p>
+        <button class="btn gold" type="button" id="open-server" style="margin-top:10px;">Plant server</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="days" class="screen">
+    <header class="bar">
+      <div class="bolt">⚡</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:.9rem;">ORIENT CEMENT</div>
+        <div style="font-size:11px;opacity:.75;">On this phone</div>
+      </div>
+      <button class="btn ghost small" type="button" id="days-server">Plant server</button>
+      <button class="btn ghost small" type="button" id="days-out">Sign out</button>
+    </header>
+    <div class="wrap">
+      <h1>Weekly electrical PM</h1>
+      <p class="muted">One plant section per weekday. Submit stores the round on this phone until a plant server is saved.</p>
+      <div id="day-list"></div>
+      <p><button class="btn" type="button" id="open-history">On-device records</button></p>
+    </div>
+  </section>
+
+  <section id="log" class="screen">
+    <header class="bar">
+      <button class="btn ghost small" type="button" id="log-back">Days</button>
+      <div style="flex:1;min-width:0;">
+        <div id="log-title" style="font-weight:700;font-size:.95rem;"></div>
+        <div id="log-pct" style="font-size:11px;opacity:.75;"></div>
+      </div>
+      <button class="btn ghost small" type="button" id="log-server">Plant server</button>
+    </header>
+    <div class="wrap">
+      <div class="card">
+        <h2>Shift details</h2>
+        <div class="grid two">
+          <div>
+            <label for="date">Date</label>
+            <input id="date" type="date" />
+          </div>
+          <div>
+            <label for="shift">Shift</label>
+            <select id="shift">
+              <option value="">— Select —</option>
+              <option value="A">A (06:00–14:00)</option>
+              <option value="B">B (14:00–22:00)</option>
+              <option value="C">C (22:00–06:00)</option>
+              <option value="G">General (08:00–17:00)</option>
+            </select>
+          </div>
+          <div>
+            <label>Technician</label>
+            <input id="tech" readonly />
+          </div>
+          <div>
+            <label for="sup">Supervisor</label>
+            <input id="sup" placeholder="Name of supervisor on this shift" />
+          </div>
+        </div>
+      </div>
+      <div id="equip-list"></div>
+      <div id="common-list"></div>
+      <div class="card">
+        <h2>Ready to archive</h2>
+        <p class="muted" id="sum-line"></p>
+        <p id="submit-err" class="err"></p>
+        <button class="btn gold" type="button" id="submit">Submit checklist</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="done" class="screen">
+    <header class="bar">
+      <div class="bolt">⚡</div>
+      <div style="flex:1;">Archived on this phone</div>
+    </header>
+    <div class="wrap">
+      <div class="card" id="done-card"></div>
+      <button class="btn" type="button" id="done-print">Print / PDF</button>
+      <p><button class="btn gold" type="button" id="done-days">Back to days</button></p>
+    </div>
+  </section>
+
+  <section id="history" class="screen">
+    <header class="bar">
+      <button class="btn ghost small" type="button" id="hist-back">Days</button>
+      <div style="flex:1;font-weight:700;">On-device records</div>
+    </header>
+    <div class="wrap" id="hist-list"></div>
+  </section>
+
+  <section id="record" class="screen">
+    <header class="bar">
+      <button class="btn ghost small" type="button" id="rec-back">Records</button>
+      <div style="flex:1;font-weight:700;">Checklist</div>
+      <button class="btn ghost small" type="button" id="rec-print">Print / PDF</button>
+    </header>
+    <div class="wrap report" id="record-body"></div>
+  </section>
+
+  <script src="catalogue.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

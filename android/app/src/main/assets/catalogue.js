@@ -1,0 +1,4301 @@
+window.ALL_DAYS_DATA = {
+  "mon": {
+    "label": "Monday · Additive Section",
+    "formLabel": "Monday – Additive Section",
+    "equip": [
+      {
+        "id": "tt001",
+        "tag": "TT-001",
+        "isHT": false,
+        "name": "Additive Truck Tippler",
+        "runningParams": [
+          {
+            "id": "tt_curr",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "tt_volt",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": true,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "tt_brg_de",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "tt_brg_nd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "tt_body",
+            "label": "Motor Body Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "tt_pf",
+            "label": "Power Factor",
+            "unit": "",
+            "phases": false,
+            "limit": "0.85–0.95"
+          }
+        ],
+        "runningChecks": [
+          "Visual inspection – motor body & terminal box (cracks, moisture, burnt smell)",
+          "Motor cooling fan & fin condition (fan guard intact, fins clear)",
+          "LRS water level at MAX",
+          "Drive coupling / gearbox oil seal (no leakage, no abnormal noise)",
+          "Vibration & noise check (no grinding / abnormal vibration)",
+          "Field Control panel indicator lamps all functional",
+          "Earthing connections tight & connected"
+        ],
+        "stoppedChecks": [
+          "Insulation resistance test – Megger Ph-Ph & Ph-E; record MΩ value",
+          "Motor terminal connections torque check (U1/V1/W1/U2/V2/W2)",
+          "Clean motor body & terminal box; remove dust; dry if required",
+          "Bearing greasing (if schedule due) – correct grade & quantity",
+          "Clean cooling fan & guard; check fan blade condition",
+          "Motor mounting bolts – all foundation bolts tight, correct torque",
+          "Check gland plates & cable entries – unused entries blanked",
+          "Relay / contactor inspection at MCC – contact gap, arc chutes, coil",
+          "MCC breaker mechanism – trip-free, interlocks OK, racking smooth",
+          "Emergency stop circuit – simulate E-stop, verify contactor drops",
+          "Tippler structure earth bonding – check continuity"
+        ]
+      },
+      {
+        "id": "wf001",
+        "tag": "WF-001/BC-001",
+        "isHT": false,
+        "name": "Samson Weigh Feeder & Belt",
+        "runningParams": [
+          {
+            "id": "wf_cf",
+            "label": "Feeder Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "wf_cb",
+            "label": "Belt Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "wf_v",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "wf_bt",
+            "label": "Bearing Temp (Motor)",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking / alignment – running centrally, no edge rubbing",
+          "VFD / speed controller display – no fault codes, output freq normal",
+          "Weigh feeder controller – set rate vs actual; no alarms",
+          "Load cell cable condition – no kinks, damage; connector secure",
+          "Take-up tension mechanism – gravity weight free, rails clear",
+          "All safety devices operational – speed switch, belt sway, pull cord"
+        ],
+        "stoppedChecks": [
+          "Megger test – feeder motor & belt motor; record IR values (> 1 MΩ)",
+          "Load cell calibration check – zero & span with known weights",
+          "Belt splice / joint inspection – vulcanised joint integrity",
+          "Clean feeder trough & skirt boards; check rubber seals",
+          "Check & clean speed sensor – gap check; cable routing secure",
+          "Inspection of all rollers / idlers – replace seized; relubricate",
+          "Terminal box & junction box – connections tight; moisture-free",
+          "Weigh feeder controller parameter backup / record settings",
+          "Earth continuity check – frame to main earth bus < 1 Ω"
+        ]
+      },
+      {
+        "id": "bc080",
+        "tag": "113BC080",
+        "isHT": false,
+        "name": "Belt Conveyor – 113BC080",
+        "runningParams": [
+          {
+            "id": "b8_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "b8_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "b8_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "b8_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "b8_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          },
+          {
+            "id": "b8_kw",
+            "label": "Motor kW Loading",
+            "unit": "%",
+            "phases": false,
+            "limit": "< 90% FL"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking – running central, no edge contact with structure",
+          "Head & tail pulley – no material build-up, belt wrap uniform",
+          "Gearbox oil level & leakage – oil in sight glass OK, no leakage",
+          "Safety devices armed – pull cord, belt sway, under-speed switch OK",
+          "Idler condition (visual) – no seized or noisy idlers",
+          "Chute & skirt board – no blockage, rubber seal intact"
+        ],
+        "stoppedChecks": [
+          "Motor IR test – Megger Ph-Ph & Ph-E; record values",
+          "Replace seized / damaged idlers – carry, return & impact; lubricate",
+          "Belt joint / splice inspection – vulcanised joint integrity",
+          "Pulley lagging inspection – check condition; repair if worn",
+          "Gearbox oil change (if due) – drain & refill with specified grade",
+          "Clean drive arrangement – motor, coupling, gearbox",
+          "Conveyor structure earth bonding – tail to head < 1 Ω",
+          "Verify interlocks & sequence – upstream/downstream chain correct"
+        ]
+      },
+      {
+        "id": "cr001",
+        "tag": "CR-001/LRS-001",
+        "isHT": true,
+        "name": "Additive Crusher – HT Motor & LRS",
+        "runningParams": [
+          {
+            "id": "cr_st",
+            "label": "Stator Current (HT)",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr_ro",
+            "label": "Rotor Current (LRS)",
+            "unit": "A",
+            "phases": true,
+            "limit": "Per LRS design"
+          },
+          {
+            "id": "cr_vo",
+            "label": "HT Bus Voltage",
+            "unit": "kV",
+            "phases": false,
+            "limit": "6.6 kV ± 10%"
+          },
+          {
+            "id": "cr_lt",
+            "label": "LRS Electrolyte Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 60°C"
+          },
+          {
+            "id": "cr_lp",
+            "label": "LRS Electrode Position",
+            "unit": "",
+            "phases": false,
+            "limit": "Per startup curve"
+          },
+          {
+            "id": "cr_de",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr_nd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr_rd",
+            "label": "Motor Winding Temp (RTD)",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 130°C (Cl.F)"
+          },
+          {
+            "id": "cr_kw",
+            "label": "Crusher Load / kW",
+            "unit": "kW",
+            "phases": false,
+            "limit": "< 90% rated"
+          },
+          {
+            "id": "cr_vb",
+            "label": "Vibration",
+            "unit": "mm/s",
+            "phases": false,
+            "limit": "< 4.5 mm/s"
+          }
+        ],
+        "runningChecks": [
+          "LRS tank electrolyte level – at marked line; top up if low",
+          "LRS cooling water flow – inlet/outlet flow & temperature normal",
+          "LRS electrode drive mechanism – smooth operation, no jamming",
+          "LRS control cabinet display – no fault/alarm; auto-manual correct",
+          "HT motor terminal box external visual – no moisture; sealing intact",
+          "HT cable termination visual (outdoor) – gland, stress cone, armouring",
+          "REF615 relay LED status – green = healthy; amber/red → investigate",
+          "VD4 breaker position indicator – racked-in, service position confirmed",
+          "HT motor earthing & body bonding – all connections secure",
+          "Crusher bearing lubrication level – oil / grease nipple OK",
+          "Abnormal noise / vibration – no knocking or grinding"
+        ],
+        "stoppedChecks": [
+          "HT motor IR test (Megger 5 kV) – Ph-Ph & Ph-E; DAR / PI ratio",
+          "LRS electrolyte specific gravity – compare with commissioning record",
+          "LRS electrolyte quality – check colour; change if discoloured",
+          "LRS electrode condition – corrosion, pitting, deposition check",
+          "LRS shorting contactor – contact wear, gap, spring pressure, coil",
+          "LRS panel interiors – cleaning; all terminals torque check",
+          "HT motor terminal box – open & inspect; connections, PD indicators",
+          "HT cable outdoor section – armour continuity; insulation visual",
+          "REF615 relay self-test & settings verification – record settings",
+          "VD4 CB – contact erosion indicator; lubrication; mechanism check",
+          "VD4 CB tripping test (if permitted) – trip & close; verify timing",
+          "Crusher structure earth check – crusher frame to earth grid",
+          "Motor space heater circuit – Megger space heater; wiring condition"
+        ]
+      },
+      {
+        "id": "bc100",
+        "tag": "113BC100",
+        "isHT": false,
+        "name": "Belt Conveyor – 113BC100",
+        "runningParams": [
+          {
+            "id": "b1_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "b1_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "b1_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "b1_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          },
+          {
+            "id": "b1_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking – head, middle, tail: belt central throughout",
+          "Head & tail pulley – no carryback buildup; belt wrap OK",
+          "Pull cord & belt sway switch – switches in reset; cables intact",
+          "Discharge chute & skirt board – no blockage; rubber seal intact",
+          "Motor & gearbox noise – no abnormal noise; oil seal intact"
+        ],
+        "stoppedChecks": [
+          "Motor IR test – Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection & replacement – replace seized/noisy; check alignment",
+          "Belt joint / splice inspection – visual integrity check",
+          "Pulley lagging & bearing inspection – lagging condition; bearing play",
+          "Pull cord & belt sway switch function test – verify control response",
+          "Under-speed switch calibration – set speed vs actual trip speed",
+          "Clean & inspect MCC cubicle – contactor, relay, terminals, bus bar",
+          "Earth continuity – belt structure to control earth bus"
+        ]
+      },
+      {
+        "id": "stk001",
+        "tag": "STK-001",
+        "isHT": false,
+        "name": "Additive Stacker",
+        "runningParams": [
+          {
+            "id": "sk_lf",
+            "label": "Luffing Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "sk_sl",
+            "label": "Slewing Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "sk_bl",
+            "label": "Belt Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "sk_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "sk_sb",
+            "label": "Slewing Drive Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 75°C"
+          },
+          {
+            "id": "sk_lg",
+            "label": "Luffing Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Boom belt tracking – belt central, no edge rubbing",
+          "Slewing limit switches – left/right slew limits functioning",
+          "Luffing limit switches – upper/lower luff limits functioning",
+          "Trailing cable condition – no kinking, tension, abrasion",
+          "Cable reel / festoon system – smooth take-up; no slack dragging",
+          "Pendant control – all pushbuttons operate correctly",
+          "Boom lighting – working lamps; no exposed wiring",
+          "Abnormal noise from slew / luff drives – no grinding or knocking"
+        ],
+        "stoppedChecks": [
+          "All motor IR tests (Megger) – luffing, slewing, belt drive motors",
+          "Trailing cable insulation test – Megger all cores; armour continuity",
+          "Cable reel inspection – brush gear / slip ring inspection & cleaning",
+          "Slewing ring gear lubrication – apply grease to pinion & ring gear",
+          "Luffing gearbox oil level – top up / change oil as per schedule",
+          "Limit switch mechanism – clean & adjust all cams & contacts",
+          "Pendant control box – switches, pushbuttons, indicator lamps",
+          "Structural earth bonding – boom, walkway, tail structure earth chain",
+          "Incoming panel & MCC – isolator, contactor, relay, bus bar inspection"
+        ]
+      }
+    ],
+    "common": [
+      {
+        "id": "pullcords",
+        "name": "Pull Cord Switches",
+        "color": "#c0392b",
+        "icon": "🔴",
+        "items": [
+          {
+            "id": "pc1",
+            "tag": "PC-BC080-H",
+            "device": "Pull Cord – 113BC080 Head",
+            "check": "Pull, verify trip to MCC; reset; re-arm"
+          },
+          {
+            "id": "pc2",
+            "tag": "PC-BC080-T",
+            "device": "Pull Cord – 113BC080 Tail",
+            "check": "Pull, verify trip; reset; re-arm"
+          },
+          {
+            "id": "pc3",
+            "tag": "PC-BC100-H",
+            "device": "Pull Cord – 113BC100 Head",
+            "check": "Pull, verify trip; cable intact; switch free"
+          },
+          {
+            "id": "pc4",
+            "tag": "PC-BC100-T",
+            "device": "Pull Cord – 113BC100 Tail",
+            "check": "Pull, verify trip; cable intact"
+          },
+          {
+            "id": "pc5",
+            "tag": "PC-STK-001",
+            "device": "Pull Cord – Stacker Boom",
+            "check": "Operate & verify; reset correctly"
+          }
+        ]
+      },
+      {
+        "id": "beltsway",
+        "name": "Belt Sway Switches",
+        "color": "#2980b9",
+        "icon": "🔵",
+        "items": [
+          {
+            "id": "bsw1",
+            "tag": "BSW-BC080",
+            "device": "Belt Sway – 113BC080",
+            "check": "Manually actuate; confirm trip & alarm at MCC"
+          },
+          {
+            "id": "bsw2",
+            "tag": "BSW-BC100",
+            "device": "Belt Sway – 113BC100",
+            "check": "Manually actuate; confirm trip & alarm"
+          },
+          {
+            "id": "bsw3",
+            "tag": "BSW-WF001",
+            "device": "Belt Sway – Weigh Feeder",
+            "check": "Actuate; verify; reset"
+          }
+        ]
+      },
+      {
+        "id": "estop",
+        "name": "Field Emergency Stops",
+        "color": "#e74c3c",
+        "icon": "🆘",
+        "items": [
+          {
+            "id": "es1",
+            "tag": "ES-TT-001",
+            "device": "E-Stop – Truck Tippler Area",
+            "check": "Press & release; verify trip; confirm panel status"
+          },
+          {
+            "id": "es2",
+            "tag": "ES-CR-001",
+            "device": "E-Stop – Crusher Area",
+            "check": "Press & release; verify trip; confirm panel status"
+          },
+          {
+            "id": "es3",
+            "tag": "ES-STK-001",
+            "device": "E-Stop – Stacker Area",
+            "check": "Press & release; verify trip"
+          }
+        ]
+      },
+      {
+        "id": "weldingdb",
+        "name": "Welding DBs",
+        "color": "#8e44ad",
+        "icon": "⚡",
+        "items": [
+          {
+            "id": "wdb1",
+            "tag": "WDB-TT-01",
+            "device": "Welding DB – Tippler Area",
+            "check": "Incoming MCB ON; RCBO trip test; socket condition OK"
+          },
+          {
+            "id": "wdb2",
+            "tag": "WDB-CR-01",
+            "device": "Welding DB – Crusher Area",
+            "check": "Incoming MCB ON; RCBO trip test; socket condition OK"
+          },
+          {
+            "id": "wdb3",
+            "tag": "WDB-STK-01",
+            "device": "Welding DB – Stacker Area",
+            "check": "Incoming MCB ON; RCBO trip test"
+          }
+        ]
+      },
+      {
+        "id": "lighting",
+        "name": "Area Lighting",
+        "color": "#d68910",
+        "icon": "💡",
+        "items": [
+          {
+            "id": "lt1",
+            "tag": "LT-TT-01",
+            "device": "Tippler Area Lighting",
+            "check": "All luminaires ON; no dark spots; check MCB"
+          },
+          {
+            "id": "lt2",
+            "tag": "LT-CR-01",
+            "device": "Crusher Bay Lighting",
+            "check": "All luminaires ON; check ballast/driver condition"
+          },
+          {
+            "id": "lt3",
+            "tag": "LT-BC080",
+            "device": "Belt Gallery 113BC080 Lighting",
+            "check": "Walk gallery; all lamps working; fittings secure"
+          },
+          {
+            "id": "lt4",
+            "tag": "LT-BC100",
+            "device": "Belt Gallery 113BC100 Lighting",
+            "check": "Walk gallery; all lamps working"
+          },
+          {
+            "id": "lt5",
+            "tag": "LT-STK-01",
+            "device": "Stacker Area Floodlights",
+            "check": "Night check / dusk sensor operation"
+          },
+          {
+            "id": "lt6",
+            "tag": "EL-ADD-01–05",
+            "device": "Emergency Luminaires (all areas)",
+            "check": "Self-test button; 3 hr backup OK; battery check"
+          }
+        ]
+      }
+    ]
+  },
+  "tue": {
+    "label": "Tuesday · Bauxite Section",
+    "formLabel": "Tuesday – Bauxite Section",
+    "equip": [
+      {
+        "id": "bx_trv",
+        "tag": "RCL-BX-TRV",
+        "isHT": false,
+        "name": "Bauxite Reclaimer – Travel Drive Motor",
+        "runningParams": [
+          {
+            "id": "bxt_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bxt_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bxt_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bxt_bnd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bxt_brk",
+            "label": "Brake Release Curr",
+            "unit": "A",
+            "phases": false,
+            "limit": "Per nameplate"
+          }
+        ],
+        "runningChecks": [
+          "Travel brake — fully releasing on energisation; no drag or residual friction",
+          "Travel limit switches (both ends) — flag positions, cam adjustment correct",
+          "Cable festoon / trailing cable — no kinking, tension or abrasion along rail",
+          "Festoon trolleys — all rollers free; no derailed carriers",
+          "Drive coupling & gearbox — no abnormal noise; oil seal intact",
+          "Motor body & terminal box — no moisture ingress; sealing intact",
+          "Earthing — cable earth, motor body bond all secure"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E (500 V); record MΩ; compare baseline",
+          "Brake pad thickness — measure & record; replace if < minimum",
+          "Brake air gap — verify gap within spec; adjust actuator if required",
+          "Travel limit switch — actuate manually; verify NC/NO contacts; clean",
+          "Festoon cable IR test — Megger all cores; armour continuity check",
+          "Gearbox oil level — top up; check quality; change if scheduled",
+          "Coupling element — check flexible insert wear; replace if cracked",
+          "Terminal connections — torque check all lugs U1/V1/W1",
+          "Foundation bolts — all tight; check mounting structure for cracks",
+          "Earth continuity — motor frame to plant earth grid"
+        ]
+      },
+      {
+        "id": "bx_chn",
+        "tag": "RCL-BX-CHN",
+        "isHT": false,
+        "name": "Bauxite Reclaimer – Chain Drive Motor",
+        "runningParams": [
+          {
+            "id": "bxc_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bxc_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bxc_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bxc_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Drag chain — tension correct; no jumped links or seized pins",
+          "Chain lubrication — auto-lube spraying correctly; no dry sections",
+          "Drive & tail sprocket — tooth wear acceptable; no cracking",
+          "Scraper flights — no missing, bent or broken flights",
+          "Gearbox — oil level sight glass OK; no leakage; noise normal",
+          "Motor noise & vibration — no knocking or grinding"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Chain tension — measure sag; adjust take-up if required",
+          "Chain pin & bush wear — check elongation; replace if > 3%",
+          "Sprocket tooth profile — inspect for hooking or sharp wear",
+          "Gearbox oil sample — collect & check for metal particles",
+          "Chain lubrication system — clean nozzles; check pump operation",
+          "Motor bearing greasing — apply correct grade per schedule",
+          "Terminal connections — torque check; clean terminal box"
+        ]
+      },
+      {
+        "id": "bx_crd",
+        "tag": "RCL-BX-CRD",
+        "isHT": false,
+        "name": "Bauxite Reclaimer – CRD Motor (Slip Ring)",
+        "runningParams": [
+          {
+            "id": "bxr_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bxr_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bxr_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bxr_bgt",
+            "label": "Brush Gear Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bxr_rbt",
+            "label": "Resistance Box Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          }
+        ],
+        "runningChecks": [
+          "Carbon brush length — check against minimum wear mark on all brushes (all 3 phases)",
+          "Brush sparking — uniform light sparking only; no heavy or uneven sparking",
+          "Brush contact pressure — all spring fingers intact; brushes seated in holders",
+          "Slip ring surface — smooth & clean; no grooving, burning or carbon deposits",
+          "Brush holder insulation — no cracks, contamination or carbon tracking",
+          "Resistance box — all steps engaging smoothly; cooling fins unobstructed",
+          "Shorting contactor — operates at full speed; no chatter or bouncing",
+          "Rotor cable at brush gear — no looseness; no arcing marks at terminals"
+        ],
+        "stoppedChecks": [
+          "Carbon brush length — measure all; replace if any < 15 mm",
+          "Brush holder cleaning — blow out all carbon dust with dry air",
+          "Brush holder tightness — check clamping screws; holders must not rattle",
+          "Slip ring cleaning — wipe with lint-free dry cloth; check for grooving",
+          "Slip ring polishing — fine emery if pitted; check runout with dial gauge",
+          "Resistance box inspection — check contact tips, springs; clean contacts with IPA",
+          "Resistance box earthing — frame properly bonded to motor body; tighten if loose",
+          "Stator IR test — Megger Ph-Ph & Ph-E (500 V); record vs baseline",
+          "Rotor IR test — Megger all 3 rotor phases; check inter-phase balance",
+          "Brush gear earth bond — brush gear frame to motor frame continuity check",
+          "All terminal torques — stator & rotor terminals; record as-found values"
+        ]
+      },
+      {
+        "id": "bx_hst",
+        "tag": "RCL-BX-HST",
+        "isHT": false,
+        "name": "Bauxite Reclaimer – Hoist Motor",
+        "runningParams": [
+          {
+            "id": "bxh_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bxh_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bxh_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Hoist brake — releases fully on energise; holds load on de-energise",
+          "Wire rope — no broken wires, kinks or crushed strands visible",
+          "Upper & lower limit switches — correct operation; rope does not overwind",
+          "Drum rope layering — rope winds evenly; no crossed layers",
+          "Sheave & pulley block — pins intact; rope groove condition OK",
+          "Load holding — no drift when hoist stationary under load"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Brake pad thickness — measure; replace if at or below minimum",
+          "Brake spring force — check compression; replace weakened springs",
+          "Wire rope inspection — full length; check broken wires, corrosion, kinks",
+          "Wire rope lubrication — apply rope lube per schedule",
+          "Drum & rope anchor — check rope termination; flange condition",
+          "Gearbox oil level — check & top up; oil change if due",
+          "Limit switch cams — clean; verify trip positions",
+          "Coupling & mounting — all bolts tight; coupling element inspected"
+        ]
+      },
+      {
+        "id": "bx_cmp",
+        "tag": "RCL-BX-CMP",
+        "isHT": false,
+        "name": "Bauxite Reclaimer – Compressor Motor",
+        "runningParams": [
+          {
+            "id": "bxm_cu",
+            "label": "Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bxm_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bxm_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bxm_pr",
+            "label": "Delivery Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per system design"
+          },
+          {
+            "id": "bxm_tp",
+            "label": "Receiver Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per safety valve set"
+          }
+        ],
+        "runningChecks": [
+          "Delivery pressure — within set point; pressure switch cycling normally",
+          "Safety relief valve — not lifting at normal pressure; no weeping",
+          "Air receiver — no condensate buildup; auto-drain operating correctly",
+          "Belt drive — tension OK; no slipping or squeal; guard in place",
+          "Motor noise & temperature — no abnormal noise; body temp normal",
+          "Air lines & fittings — no leaks audible or visible; no damaged hoses"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ value",
+          "Compressor valves — inspect inlet/delivery valves; replace if leaking",
+          "Belt tension & condition — re-tension per spec; replace if cracked/frayed",
+          "Belt drive alignment — check pulley alignment with straightedge",
+          "Air receiver drain — open & drain; check valve condition",
+          "Safety valve — manual lift test; check re-seating; replace if weeping",
+          "Oil level — check crankcase; top up to mark",
+          "Air filter element — inspect; clean or replace if blocked",
+          "Motor bearing greasing — correct grade per nameplate schedule"
+        ]
+      },
+      {
+        "id": "bx_frk",
+        "tag": "RCL-BX-FRK",
+        "isHT": false,
+        "name": "Bauxite Reclaimer – Face Rake Motor",
+        "runningParams": [
+          {
+            "id": "bxf_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bxf_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bxf_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bxf_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Rake tooth condition — no missing or severely worn teeth; no jamming",
+          "Gearbox oil level — sight glass / dipstick OK; no leakage",
+          "Motor & gearbox noise — no grinding or knocking",
+          "Drive chain or coupling — lubrication OK; no excessive play",
+          "Frame & mounting — no cracks; all mounting bolts intact"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Rake teeth — measure wear; replace teeth below minimum height",
+          "Gearbox oil change — drain & refill correct grade if scheduled",
+          "Gearbox bearing inspection — check condition; re-grease if required",
+          "Drive chain elongation — measure; replace if > 3% stretch",
+          "Motor bearing greasing — correct grade & quantity",
+          "Terminal connections — torque check; clean terminal box",
+          "Structural earthing — motor frame & rake frame to plant earth"
+        ]
+      },
+      {
+        "id": "bc500",
+        "tag": "BC-500",
+        "isHT": false,
+        "name": "500 Belt Motor",
+        "runningParams": [
+          {
+            "id": "bc500_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bc500_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bc500_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bc500_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bc500_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "bc550",
+        "tag": "BC-550",
+        "isHT": false,
+        "name": "550 Belt Motor",
+        "runningParams": [
+          {
+            "id": "bc550_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bc550_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bc550_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bc550_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bc550_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "bgf001",
+        "tag": "BGF-BX-01",
+        "isHT": false,
+        "name": "Bagfilter & Associated Small Motors",
+        "runningParams": [
+          {
+            "id": "bgf_cu",
+            "label": "Fan Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bgf_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bgf_bt",
+            "label": "Fan Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bgf_dp",
+            "label": "Bag Differential Press",
+            "unit": "mbar",
+            "phases": false,
+            "limit": "100–200 mbar"
+          },
+          {
+            "id": "bgf_sc",
+            "label": "Screw Conv. Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          }
+        ],
+        "runningChecks": [
+          "Differential pressure — within normal band; no sudden spike (bag burst indicator)",
+          "Pulse cleaning — solenoid valves firing in sequence; audible pulses OK",
+          "Rotary air lock / screw conveyor — running; no overload or jam",
+          "Fan motor — no abnormal vibration; bearing temperature normal",
+          "Hopper level — no dust buildup above sensor; rotary valve discharging",
+          "Compressed air supply to pulse valves — pressure at set point",
+          "Control panel — no fault alarms on controller display"
+        ],
+        "stoppedChecks": [
+          "Fan motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Bag inspection — access hopper; check for torn/clogged bags if DP was high",
+          "Pulse valve solenoids — test each valve manually; replace faulty coils",
+          "Rotary air lock blades — inspect for wear; clean clearances",
+          "Screw conveyor — inspect flighting wear; check trough for blockage",
+          "Fan impeller — inspect for dust buildup; clean if unbalanced",
+          "Fan bearing greasing — correct grade per schedule",
+          "All motor terminal connections — torque check; clean terminal boxes",
+          "Earth continuity — fan, screw, rotary valve motors to plant earth"
+        ]
+      },
+      {
+        "id": "ms_bx01",
+        "tag": "MS-BX-01",
+        "isHT": false,
+        "name": "Magnetic Separator – Bauxite Section",
+        "runningParams": [
+          {
+            "id": "ms_bx01_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "ms_bx01_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "ms_bx01_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "ms_bx01_ct",
+            "label": "Magnet Coil Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          }
+        ],
+        "runningChecks": [
+          "Magnet belt — running centrally; no carryback on return side",
+          "Tramp iron discharge — iron/tramp being collected & deposited correctly",
+          "Magnet coil — no overheating; coil current within nameplate",
+          "Drive motor & gearbox — no abnormal noise or vibration",
+          "Suspension height — magnet at correct height above conveyor belt",
+          "Belt scrapers — cleaning belt adequately; no belt damage from scraper"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ value",
+          "Magnet coil resistance — measure DC resistance; compare vs nameplate",
+          "Magnet belt — check cuts, splice condition, edge wear",
+          "Belt drive — pulley lagging, belt tension; re-tension if slack",
+          "Suspension cables/frame — check corrosion, cracks, bolt tightness",
+          "Terminal connections — torque check motor & coil terminals",
+          "Earth bonding — magnet frame to plant earth; continuity check"
+        ]
+      }
+    ],
+    "common": [
+      {
+        "id": "pc_tue",
+        "name": "Pull Cord Switches",
+        "color": "#c0392b",
+        "icon": "🔴",
+        "items": [
+          {
+            "id": "pc_b5h",
+            "tag": "PC-BC500-H",
+            "device": "Pull Cord – 500 Belt Head",
+            "check": "Pull & verify trip at MCC; reset & re-arm"
+          },
+          {
+            "id": "pc_b5t",
+            "tag": "PC-BC500-T",
+            "device": "Pull Cord – 500 Belt Tail",
+            "check": "Pull & verify trip; cable intact; re-arm"
+          },
+          {
+            "id": "pc_b55h",
+            "tag": "PC-BC550-H",
+            "device": "Pull Cord – 550 Belt Head",
+            "check": "Pull & verify trip; reset; check cable"
+          },
+          {
+            "id": "pc_b55t",
+            "tag": "PC-BC550-T",
+            "device": "Pull Cord – 550 Belt Tail",
+            "check": "Pull & verify trip; re-arm"
+          }
+        ]
+      },
+      {
+        "id": "bsw_tue",
+        "name": "Belt Sway Switches",
+        "color": "#2980b9",
+        "icon": "🔵",
+        "items": [
+          {
+            "id": "bsw_b5",
+            "tag": "BSW-BC500",
+            "device": "Belt Sway – 500 Belt",
+            "check": "Manually actuate; confirm trip & alarm at MCC"
+          },
+          {
+            "id": "bsw_b55",
+            "tag": "BSW-BC550",
+            "device": "Belt Sway – 550 Belt",
+            "check": "Manually actuate; confirm trip & alarm"
+          }
+        ]
+      },
+      {
+        "id": "estop_tue",
+        "name": "Field Emergency Stops",
+        "color": "#e74c3c",
+        "icon": "🆘",
+        "items": [
+          {
+            "id": "es_bx1",
+            "tag": "ES-RCL-BX",
+            "device": "E-Stop – Bauxite Reclaimer Area",
+            "check": "Press & release; verify trip; confirm panel status"
+          },
+          {
+            "id": "es_bx2",
+            "tag": "ES-BC500",
+            "device": "E-Stop – 500 Belt Area",
+            "check": "Press & release; verify trip & alarm"
+          },
+          {
+            "id": "es_bx3",
+            "tag": "ES-BC550",
+            "device": "E-Stop – 550 Belt Area",
+            "check": "Press & release; verify trip"
+          }
+        ]
+      },
+      {
+        "id": "lt_tue",
+        "name": "Area Lighting",
+        "color": "#d68910",
+        "icon": "💡",
+        "items": [
+          {
+            "id": "lt_bxr",
+            "tag": "LT-RCL-BX",
+            "device": "Bauxite Reclaimer Area Lighting",
+            "check": "All luminaires ON; no dark spots; MCB status OK"
+          },
+          {
+            "id": "lt_b5",
+            "tag": "LT-BC500",
+            "device": "500 Belt Gallery Lighting",
+            "check": "Walk gallery; all lamps working; fittings secure"
+          },
+          {
+            "id": "lt_b55",
+            "tag": "LT-BC550",
+            "device": "550 Belt Gallery Lighting",
+            "check": "Walk gallery; all lamps working"
+          },
+          {
+            "id": "lt_bgf",
+            "tag": "LT-BGF-BX",
+            "device": "Bagfilter Area Lighting",
+            "check": "All luminaires ON; check MCB"
+          },
+          {
+            "id": "lt_el_bx",
+            "tag": "EL-BX-01–03",
+            "device": "Emergency Luminaires – Bauxite",
+            "check": "Self-test button; 3 hr backup OK; battery condition"
+          }
+        ]
+      }
+    ]
+  },
+  "wed": {
+    "label": "Wednesday · Gypsum Section",
+    "formLabel": "Wednesday – Gypsum Section",
+    "equip": [
+      {
+        "id": "gy_trv",
+        "tag": "RCL-GY-TRV",
+        "isHT": false,
+        "name": "Gypsum Reclaimer – Travel Drive Motor",
+        "runningParams": [
+          {
+            "id": "gyt_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gyt_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gyt_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gyt_bnd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gyt_brk",
+            "label": "Brake Release Curr",
+            "unit": "A",
+            "phases": false,
+            "limit": "Per nameplate"
+          }
+        ],
+        "runningChecks": [
+          "Travel brake — fully releasing on energisation; no drag or residual friction",
+          "Travel limit switches (both ends) — flag positions, cam adjustment correct",
+          "Cable festoon / trailing cable — no kinking, tension or abrasion along rail",
+          "Festoon trolleys — all rollers free; no derailed carriers",
+          "Drive coupling & gearbox — no abnormal noise; oil seal intact",
+          "Motor body & terminal box — no moisture ingress; sealing intact",
+          "Earthing — cable earth, motor body bond all secure"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E (500 V); record MΩ; compare baseline",
+          "Brake pad thickness — measure & record; replace if < minimum",
+          "Brake air gap — verify gap within spec; adjust actuator if required",
+          "Travel limit switch — actuate manually; verify NC/NO contacts; clean",
+          "Festoon cable IR test — Megger all cores; armour continuity check",
+          "Gearbox oil level — top up; check quality; change if scheduled",
+          "Coupling element — check flexible insert wear; replace if cracked",
+          "Terminal connections — torque check all lugs U1/V1/W1",
+          "Foundation bolts — all tight; check mounting structure for cracks",
+          "Earth continuity — motor frame to plant earth grid"
+        ]
+      },
+      {
+        "id": "gy_chn",
+        "tag": "RCL-GY-CHN",
+        "isHT": false,
+        "name": "Gypsum Reclaimer – Chain Drive Motor",
+        "runningParams": [
+          {
+            "id": "gyc_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gyc_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gyc_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gyc_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Drag chain — tension correct; no jumped links or seized pins",
+          "Chain lubrication — auto-lube spraying correctly; no dry sections",
+          "Drive & tail sprocket — tooth wear acceptable; no cracking",
+          "Scraper flights — no missing, bent or broken flights",
+          "Gearbox — oil level sight glass OK; no leakage; noise normal",
+          "Motor noise & vibration — no knocking or grinding"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Chain tension — measure sag; adjust take-up if required",
+          "Chain pin & bush wear — check elongation; replace if > 3%",
+          "Sprocket tooth profile — inspect for hooking or sharp wear",
+          "Gearbox oil sample — collect & check for metal particles",
+          "Chain lubrication system — clean nozzles; check pump operation",
+          "Motor bearing greasing — apply correct grade per schedule",
+          "Terminal connections — torque check; clean terminal box"
+        ]
+      },
+      {
+        "id": "gy_crd",
+        "tag": "RCL-GY-CRD",
+        "isHT": false,
+        "name": "Gypsum Reclaimer – CRD Motor (Slip Ring)",
+        "runningParams": [
+          {
+            "id": "gyr_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gyr_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gyr_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gyr_bgt",
+            "label": "Brush Gear Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "gyr_rbt",
+            "label": "Resistance Box Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          }
+        ],
+        "runningChecks": [
+          "Carbon brush length — check against minimum wear mark on all brushes (all 3 phases)",
+          "Brush sparking — uniform light sparking only; no heavy or uneven sparking",
+          "Brush contact pressure — all spring fingers intact; brushes seated in holders",
+          "Slip ring surface — smooth & clean; no grooving, burning or carbon deposits",
+          "Brush holder insulation — no cracks, contamination or carbon tracking",
+          "Resistance box — all steps engaging smoothly; cooling fins unobstructed",
+          "Shorting contactor — operates at full speed; no chatter or bouncing",
+          "Rotor cable at brush gear — no looseness; no arcing marks at terminals"
+        ],
+        "stoppedChecks": [
+          "Carbon brush length — measure all; replace if any < 15 mm",
+          "Brush holder cleaning — blow out all carbon dust with dry air",
+          "Brush holder tightness — check clamping screws; holders must not rattle",
+          "Slip ring cleaning — wipe with lint-free dry cloth; check for grooving",
+          "Slip ring polishing — fine emery if pitted; check runout with dial gauge",
+          "Resistance box inspection — check contact tips, springs; clean contacts with IPA",
+          "Resistance box earthing — frame properly bonded to motor body; tighten if loose",
+          "Stator IR test — Megger Ph-Ph & Ph-E (500 V); record vs baseline",
+          "Rotor IR test — Megger all 3 rotor phases; check inter-phase balance",
+          "Brush gear earth bond — brush gear frame to motor frame continuity check",
+          "All terminal torques — stator & rotor terminals; record as-found values"
+        ]
+      },
+      {
+        "id": "gy_hst",
+        "tag": "RCL-GY-HST",
+        "isHT": false,
+        "name": "Gypsum Reclaimer – Hoist Motor",
+        "runningParams": [
+          {
+            "id": "gyh_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gyh_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gyh_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Hoist brake — releases fully on energise; holds load on de-energise",
+          "Wire rope — no broken wires, kinks or crushed strands visible",
+          "Upper & lower limit switches — correct operation; rope does not overwind",
+          "Drum rope layering — rope winds evenly; no crossed layers",
+          "Sheave & pulley block — pins intact; rope groove condition OK",
+          "Load holding — no drift when hoist stationary under load"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Brake pad thickness — measure; replace if at or below minimum",
+          "Brake spring force — check compression; replace weakened springs",
+          "Wire rope inspection — full length; check broken wires, corrosion, kinks",
+          "Wire rope lubrication — apply rope lube per schedule",
+          "Drum & rope anchor — check rope termination; flange condition",
+          "Gearbox oil level — check & top up; oil change if due",
+          "Limit switch cams — clean; verify trip positions",
+          "Coupling & mounting — all bolts tight; coupling element inspected"
+        ]
+      },
+      {
+        "id": "gy_cmp",
+        "tag": "RCL-GY-CMP",
+        "isHT": false,
+        "name": "Gypsum Reclaimer – Compressor Motor",
+        "runningParams": [
+          {
+            "id": "gym_cu",
+            "label": "Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gym_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gym_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gym_pr",
+            "label": "Delivery Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per system design"
+          },
+          {
+            "id": "gym_tp",
+            "label": "Receiver Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per safety valve set"
+          }
+        ],
+        "runningChecks": [
+          "Delivery pressure — within set point; pressure switch cycling normally",
+          "Safety relief valve — not lifting at normal pressure; no weeping",
+          "Air receiver — no condensate buildup; auto-drain operating correctly",
+          "Belt drive — tension OK; no slipping or squeal; guard in place",
+          "Motor noise & temperature — no abnormal noise; body temp normal",
+          "Air lines & fittings — no leaks audible or visible; no damaged hoses"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ value",
+          "Compressor valves — inspect inlet/delivery valves; replace if leaking",
+          "Belt tension & condition — re-tension per spec; replace if cracked/frayed",
+          "Belt drive alignment — check pulley alignment with straightedge",
+          "Air receiver drain — open & drain; check valve condition",
+          "Safety valve — manual lift test; check re-seating; replace if weeping",
+          "Oil level — check crankcase; top up to mark",
+          "Air filter element — inspect; clean or replace if blocked",
+          "Motor bearing greasing — correct grade per nameplate schedule"
+        ]
+      },
+      {
+        "id": "gy_frk",
+        "tag": "RCL-GY-FRK",
+        "isHT": false,
+        "name": "Gypsum Reclaimer – Face Rake Motor",
+        "runningParams": [
+          {
+            "id": "gyf_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gyf_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gyf_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gyf_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Rake tooth condition — no missing or severely worn teeth; no jamming",
+          "Gearbox oil level — sight glass / dipstick OK; no leakage",
+          "Motor & gearbox noise — no grinding or knocking",
+          "Drive chain or coupling — lubrication OK; no excessive play",
+          "Frame & mounting — no cracks; all mounting bolts intact"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Rake teeth — measure wear; replace teeth below minimum height",
+          "Gearbox oil change — drain & refill correct grade if scheduled",
+          "Gearbox bearing inspection — check condition; re-grease if required",
+          "Drive chain elongation — measure; replace if > 3% stretch",
+          "Motor bearing greasing — correct grade & quantity",
+          "Terminal connections — torque check; clean terminal box",
+          "Structural earthing — motor frame & rake frame to plant earth"
+        ]
+      },
+      {
+        "id": "bc600",
+        "tag": "BC-600",
+        "isHT": false,
+        "name": "600 Belt Motor",
+        "runningParams": [
+          {
+            "id": "bc600_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bc600_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bc600_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bc600_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bc600_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "ms_gy01",
+        "tag": "MS-GY-01",
+        "isHT": false,
+        "name": "Magnetic Separator – Gypsum Section",
+        "runningParams": [
+          {
+            "id": "ms_gy01_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "ms_gy01_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "ms_gy01_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "ms_gy01_ct",
+            "label": "Magnet Coil Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          }
+        ],
+        "runningChecks": [
+          "Magnet belt — running centrally; no carryback on return side",
+          "Tramp iron discharge — iron/tramp being collected & deposited correctly",
+          "Magnet coil — no overheating; coil current within nameplate",
+          "Drive motor & gearbox — no abnormal noise or vibration",
+          "Suspension height — magnet at correct height above conveyor belt",
+          "Belt scrapers — cleaning belt adequately; no belt damage from scraper"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ value",
+          "Magnet coil resistance — measure DC resistance; compare vs nameplate",
+          "Magnet belt — check cuts, splice condition, edge wear",
+          "Belt drive — pulley lagging, belt tension; re-tension if slack",
+          "Suspension cables/frame — check corrosion, cracks, bolt tightness",
+          "Terminal connections — torque check motor & coil terminals",
+          "Earth bonding — magnet frame to plant earth; continuity check"
+        ]
+      },
+      {
+        "id": "gy_bc01",
+        "tag": "GY-BC01",
+        "isHT": false,
+        "name": "Gypsum Circuit Belt – BC01",
+        "runningParams": [
+          {
+            "id": "gy_bc01_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gy_bc01_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gy_bc01_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gy_bc01_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "gy_bc01_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "gy_bc02",
+        "tag": "GY-BC02",
+        "isHT": false,
+        "name": "Gypsum Circuit Belt – BC02",
+        "runningParams": [
+          {
+            "id": "gy_bc02_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gy_bc02_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gy_bc02_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gy_bc02_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "gy_bc02_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "gy_bc03",
+        "tag": "GY-BC03",
+        "isHT": false,
+        "name": "Gypsum Circuit Belt – BC03",
+        "runningParams": [
+          {
+            "id": "gy_bc03_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "gy_bc03_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "gy_bc03_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "gy_bc03_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "gy_bc03_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      }
+    ],
+    "common": [
+      {
+        "id": "pc_wed",
+        "name": "Pull Cord Switches",
+        "color": "#c0392b",
+        "icon": "🔴",
+        "items": [
+          {
+            "id": "pc_b6h",
+            "tag": "PC-BC600-H",
+            "device": "Pull Cord – 600 Belt Head",
+            "check": "Pull & verify trip at MCC; reset & re-arm"
+          },
+          {
+            "id": "pc_b6t",
+            "tag": "PC-BC600-T",
+            "device": "Pull Cord – 600 Belt Tail",
+            "check": "Pull & verify trip; re-arm"
+          },
+          {
+            "id": "pc_gb1h",
+            "tag": "PC-GYBC01-H",
+            "device": "Pull Cord – GY-BC01 Head",
+            "check": "Pull & verify trip; reset; cable intact"
+          },
+          {
+            "id": "pc_gb2h",
+            "tag": "PC-GYBC02-H",
+            "device": "Pull Cord – GY-BC02 Head",
+            "check": "Pull & verify trip; re-arm"
+          },
+          {
+            "id": "pc_gb3h",
+            "tag": "PC-GYBC03-H",
+            "device": "Pull Cord – GY-BC03 Head",
+            "check": "Pull & verify trip; re-arm"
+          }
+        ]
+      },
+      {
+        "id": "bsw_wed",
+        "name": "Belt Sway Switches",
+        "color": "#2980b9",
+        "icon": "🔵",
+        "items": [
+          {
+            "id": "bsw_b6",
+            "tag": "BSW-BC600",
+            "device": "Belt Sway – 600 Belt",
+            "check": "Actuate; confirm trip & alarm at MCC"
+          },
+          {
+            "id": "bsw_gb1",
+            "tag": "BSW-GYBC01",
+            "device": "Belt Sway – GY-BC01",
+            "check": "Actuate; confirm trip & alarm"
+          },
+          {
+            "id": "bsw_gb2",
+            "tag": "BSW-GYBC02",
+            "device": "Belt Sway – GY-BC02",
+            "check": "Actuate; confirm trip & alarm"
+          }
+        ]
+      },
+      {
+        "id": "estop_wed",
+        "name": "Field Emergency Stops",
+        "color": "#e74c3c",
+        "icon": "🆘",
+        "items": [
+          {
+            "id": "es_gy1",
+            "tag": "ES-RCL-GY",
+            "device": "E-Stop – Gypsum Reclaimer Area",
+            "check": "Press & release; verify trip; confirm panel"
+          },
+          {
+            "id": "es_gy2",
+            "tag": "ES-BC600",
+            "device": "E-Stop – 600 Belt Area",
+            "check": "Press & release; verify trip & alarm"
+          },
+          {
+            "id": "es_gy3",
+            "tag": "ES-GY-CKT",
+            "device": "E-Stop – Gypsum Circuit Area",
+            "check": "Press & release; verify trip"
+          }
+        ]
+      },
+      {
+        "id": "lt_wed",
+        "name": "Area Lighting",
+        "color": "#d68910",
+        "icon": "💡",
+        "items": [
+          {
+            "id": "lt_gyr",
+            "tag": "LT-RCL-GY",
+            "device": "Gypsum Reclaimer Area Lighting",
+            "check": "All luminaires ON; no dark spots; MCB OK"
+          },
+          {
+            "id": "lt_b6",
+            "tag": "LT-BC600",
+            "device": "600 Belt Gallery Lighting",
+            "check": "Walk gallery; all lamps working"
+          },
+          {
+            "id": "lt_gyc",
+            "tag": "LT-GY-CKT",
+            "device": "Gypsum Circuit Area Lighting",
+            "check": "All luminaires ON; MCB status OK"
+          },
+          {
+            "id": "lt_el_gy",
+            "tag": "EL-GY-01–03",
+            "device": "Emergency Luminaires – Gypsum",
+            "check": "Self-test; 3 hr backup OK; battery OK"
+          }
+        ]
+      }
+    ]
+  },
+  "thu": {
+    "label": "Thursday · LC-8 & Tippler",
+    "formLabel": "Thursday – LC-8 & Tippler",
+    "equip": [
+      {
+        "id": "lc8_pmcc",
+        "tag": "LC-8-PMCC",
+        "isHT": false,
+        "name": "LC-8 PMCC – Panel Inspection",
+        "runningParams": [
+          {
+            "id": "lc8_vr",
+            "label": "Incomer Voltage R-Y",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "lc8_vy",
+            "label": "Incomer Voltage Y-B",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "lc8_vb",
+            "label": "Incomer Voltage B-R",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "lc8_ir",
+            "label": "Incomer Current R",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ Rated"
+          },
+          {
+            "id": "lc8_iy",
+            "label": "Incomer Current Y",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ Rated"
+          },
+          {
+            "id": "lc8_ib",
+            "label": "Incomer Current B",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ Rated"
+          }
+        ],
+        "runningChecks": [
+          "Panel doors — all latched; no loose panels; no openings exposing live parts",
+          "Indicating lamps — all running feeders showing green; no unexpected red/amber",
+          "Incomer & bus protection — EFR, O/C relay status green; no active trips",
+          "Panel ventilation — exhaust fan running; louvres unobstructed; no hot spots",
+          "Cable entry area — no rodent entry; all cable glands tight; no moisture",
+          "Bus bar visual (through window) — no discolouration, tracking or burning",
+          "Capacitor bank (if fitted) — no bulging, leakage or overheating"
+        ],
+        "stoppedChecks": [
+          "Full internal inspection — all panels; clean with dry air; remove dust",
+          "Bus bar connections — torque check all bus bar bolts; compare vs schedule",
+          "Cable lug torque check — all incomer and feeder cable lugs",
+          "Bus bar thermography — use IR camera; record hotspot temperatures",
+          "EFR / OCR relay — test relay; check settings vs approved SLD",
+          "Panel earth bus — torque all earth connections; continuity check",
+          "Capacitor bank — check capacitance vs nameplate; replace if > 10% low",
+          "Ventilation fan — check motor current; clean filter if fitted",
+          "Insulation resistance — Megger bus bar to earth; record MΩ",
+          "Door interlocks — verify door interlocks preventing energisation when open"
+        ]
+      },
+      {
+        "id": "sac_mot",
+        "tag": "SAC-MOT",
+        "isHT": false,
+        "name": "Side Arm Charger Motors",
+        "runningParams": [
+          {
+            "id": "sac_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "sac_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "sac_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "sac_sp",
+            "label": "Charger Travel Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Charger travel — smooth traverse along rail; no jerking or hesitation",
+          "Travel limit switches — both end limits functioning; charger stops correctly",
+          "Rail & wheel condition — no debris on rail; wheels rolling freely",
+          "Push arm / dog — engages wagon correctly; releases cleanly",
+          "Proximity / position sensors — correct reading at all positions",
+          "Motor noise & vibration — no abnormal noise during travel",
+          "Control panel — no fault alarms; all indicators correct"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Wheel flange wear — measure; replace if worn beyond limit",
+          "Rail anchor bolts — check all are tight; no lifted or cracked rail",
+          "Limit switch contacts — clean; check spring tension; verify actuation point",
+          "Push arm mechanism — lubricate pivot pins; check for cracks",
+          "Brake (if fitted) — pad thickness; air gap; release function",
+          "Motor terminal connections — torque check; clean terminal box",
+          "Earth continuity — charger frame to plant earth bus"
+        ]
+      },
+      {
+        "id": "tpl_mot",
+        "tag": "TPL-MOT",
+        "isHT": false,
+        "name": "Tippler Motors",
+        "runningParams": [
+          {
+            "id": "tpl_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "tpl_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "tpl_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "tpl_bnd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Tippler rotation — smooth, no jerking; cycle time within normal range",
+          "Index pin / locking — locks correctly at home and inverted positions",
+          "Tippler limit switches — end positions detected correctly; no missed counts",
+          "Drive coupling — no excessive backlash or noise during reversal",
+          "Motor brake (if fitted) — releases on start; sets on stop",
+          "Motor noise & vibration — no knocking or abnormal vibration",
+          "Tippler structure — no cracking in rings, trunnion or support frame"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Coupling element — inspect flexible insert; replace if worn/cracked",
+          "Brake pad & gap — measure; adjust air gap; replace worn pads",
+          "Limit switch — clean contacts; verify actuation cams",
+          "Tippler trunnion bearing — grease per schedule; check for scoring",
+          "Drive gearbox — oil level; oil condition; check for metal in sump",
+          "Motor terminal connections — torque check U1/V1/W1",
+          "Earth bonding — tippler frame to plant earth grid"
+        ]
+      },
+      {
+        "id": "tpc_mot",
+        "tag": "TPC-MOT",
+        "isHT": false,
+        "name": "Top Clamp Motors",
+        "runningParams": [
+          {
+            "id": "tpc_cu",
+            "label": "Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "tpc_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "tpc_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Clamp operation — clamps close & open fully within cycle; no jamming",
+          "Clamp pressure — hydraulic pressure (if hydraulic drive) at set point",
+          "Proximity sensors — clamp open & closed positions detected correctly",
+          "Motor current — within nameplate during clamp operation cycle",
+          "Mechanical limit stops — clamp not over-travelling"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ",
+          "Clamp jaw condition — check for wear, cracking or deformation",
+          "Mechanical linkages — lubricate pivot points; check for loose pins",
+          "Limit switch contacts — clean; verify actuation on full open & full close",
+          "Hydraulic unit (if fitted) — oil level; filter condition; seal leaks",
+          "Motor terminal connections — torque check; clean terminal box",
+          "Earth continuity — clamp frame to plant earth"
+        ]
+      },
+      {
+        "id": "wob_mot",
+        "tag": "WOB-MOT",
+        "isHT": false,
+        "name": "Wobbler Motors",
+        "runningParams": [
+          {
+            "id": "wob_cu",
+            "label": "Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "wob_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "wob_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "wob_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Wobbler bars — all bars oscillating; no stuck or jammed bar",
+          "Coal throughput — material passing through uniformly; no bridging",
+          "Motor & gearbox — no abnormal noise or excessive vibration",
+          "Drive V-belt / coupling — no slip, squeal or cracking",
+          "Gearbox oil level — sight glass OK; no leakage",
+          "Eccentric shaft bearings — no knocking; lubrication adequate"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Wobbler bar wear — measure bar profile; replace worn bars",
+          "Eccentric bearing inspection — dismantle; check for pitting or flaking",
+          "Gearbox oil change — drain & refill correct grade per schedule",
+          "V-belt condition — measure tension; replace if cracked or glazed",
+          "Motor bearing greasing — correct grade per schedule",
+          "Structural bolts — check all mounting bolts; tighten if loose",
+          "Earth continuity — motor frame to plant earth"
+        ]
+      },
+      {
+        "id": "spc_mot",
+        "tag": "SPC-MOT",
+        "isHT": false,
+        "name": "Spillage Conveyor Motors",
+        "runningParams": [
+          {
+            "id": "spc_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "spc_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "spc_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — central throughout; no edge rubbing",
+          "Head & tail pulley — no carryback; no belt slippage",
+          "Spillage collection — belt clearing coal spill from tippler pit area",
+          "Motor & gearbox — no abnormal noise; no oil leakage",
+          "Discharge chute — not blocked; material discharging correctly"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Belt joint & idlers — splice integrity; idler rotation check",
+          "Pulley lagging — condition; no lifted or worn sections",
+          "Gearbox oil level — check & top up",
+          "Motor terminal connections — torque check; clean box",
+          "Earth continuity — conveyor frame to plant earth"
+        ]
+      },
+      {
+        "id": "dwp_mot",
+        "tag": "DWP-MOT",
+        "isHT": false,
+        "name": "Dewater Pumps",
+        "runningParams": [
+          {
+            "id": "dwp_cu",
+            "label": "Pump Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "dwp_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "dwp_bt",
+            "label": "Motor Body Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "dwp_pr",
+            "label": "Discharge Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per design"
+          }
+        ],
+        "runningChecks": [
+          "Pump flow — discharge flowing freely; no blockage in discharge line",
+          "Motor current — within nameplate; no sudden increase (blocked impeller)",
+          "Discharge valve — open and not throttled excessively",
+          "Pit level — sump pump maintaining level; float switch cycling normally",
+          "Motor noise — no abnormal noise; no cavitation sound",
+          "Cable entry — submersible cable not kinked or chafed"
+        ],
+        "stoppedChecks": [
+          "Motor IR test (submersible) — Megger; acceptable MΩ for submersible motor",
+          "Impeller — pull pump; inspect impeller for wear or blockage",
+          "Mechanical seal / shaft seal — check for leakage; replace if required",
+          "Float switch — test operation manually; verify start/stop levels",
+          "Discharge non-return valve — check operation; no backflow on stop",
+          "Submersible cable — inspect full length for damage, abrasion",
+          "Motor terminal & cable connection — torque; waterproof gland condition",
+          "Pump sump — clean accumulated sludge; check sump structure"
+        ]
+      }
+    ],
+    "common": [
+      {
+        "id": "estop_thu",
+        "name": "Field Emergency Stops",
+        "color": "#e74c3c",
+        "icon": "🆘",
+        "items": [
+          {
+            "id": "es_tpl1",
+            "tag": "ES-TPL-01",
+            "device": "E-Stop – Tippler Area",
+            "check": "Press & release; verify trip; confirm panel"
+          },
+          {
+            "id": "es_sac1",
+            "tag": "ES-SAC-01",
+            "device": "E-Stop – Side Arm Charger Area",
+            "check": "Press & release; verify trip & alarm"
+          },
+          {
+            "id": "es_spc1",
+            "tag": "ES-SPC-01",
+            "device": "E-Stop – Spillage Conv. Area",
+            "check": "Press & release; verify trip"
+          }
+        ]
+      },
+      {
+        "id": "pc_thu",
+        "name": "Pull Cord Switches",
+        "color": "#c0392b",
+        "icon": "🔴",
+        "items": [
+          {
+            "id": "pc_spc_h",
+            "tag": "PC-SPC-H",
+            "device": "Pull Cord – Spillage Conveyor Head",
+            "check": "Pull & verify trip at MCC; reset & re-arm"
+          },
+          {
+            "id": "pc_spc_t",
+            "tag": "PC-SPC-T",
+            "device": "Pull Cord – Spillage Conveyor Tail",
+            "check": "Pull & verify trip; re-arm"
+          }
+        ]
+      },
+      {
+        "id": "lt_thu",
+        "name": "Area Lighting",
+        "color": "#d68910",
+        "icon": "💡",
+        "items": [
+          {
+            "id": "lt_tpl",
+            "tag": "LT-TPL",
+            "device": "Tippler & Wagon Handling Lighting",
+            "check": "All luminaires ON; no dark spots; MCB OK"
+          },
+          {
+            "id": "lt_lc8",
+            "tag": "LT-LC8",
+            "device": "LC-8 PMCC Room Lighting",
+            "check": "All lights working; emergency light charged"
+          },
+          {
+            "id": "lt_pit",
+            "tag": "LT-PIT",
+            "device": "Tippler Pit Area Lighting",
+            "check": "Pit lights ON; waterproof fittings secure"
+          },
+          {
+            "id": "lt_el_thu",
+            "tag": "EL-TH-01–03",
+            "device": "Emergency Luminaires – Tippler",
+            "check": "Self-test; 3 hr backup OK; battery check"
+          }
+        ]
+      },
+      {
+        "id": "saf_thu",
+        "name": "Safety Devices",
+        "color": "#8e44ad",
+        "icon": "⚠️",
+        "items": [
+          {
+            "id": "lev_dwp1",
+            "tag": "LS-DWP-01",
+            "device": "Pit Level Switch – Dewater Pump 1",
+            "check": "Test float; pump starts at high level set point"
+          },
+          {
+            "id": "lev_dwp2",
+            "tag": "LS-DWP-02",
+            "device": "Pit Level Switch – Dewater Pump 2",
+            "check": "Test float; pump starts at high level set point"
+          }
+        ]
+      }
+    ]
+  },
+  "fri": {
+    "label": "Friday · Coal Reclaimers & Belts",
+    "formLabel": "Friday – Coal Reclaimers & Belts",
+    "equip": [
+      {
+        "id": "cr1_trv",
+        "tag": "RCL-CR1-TRV",
+        "isHT": false,
+        "name": "Coal Reclaimer-1 (Cement Plant) – Travel Drive Motor",
+        "runningParams": [
+          {
+            "id": "cr1t_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr1t_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr1t_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr1t_bnd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr1t_brk",
+            "label": "Brake Release Curr",
+            "unit": "A",
+            "phases": false,
+            "limit": "Per nameplate"
+          }
+        ],
+        "runningChecks": [
+          "Travel brake — fully releasing on energisation; no drag or residual friction",
+          "Travel limit switches (both ends) — flag positions, cam adjustment correct",
+          "Cable festoon / trailing cable — no kinking, tension or abrasion along rail",
+          "Festoon trolleys — all rollers free; no derailed carriers",
+          "Drive coupling & gearbox — no abnormal noise; oil seal intact",
+          "Motor body & terminal box — no moisture ingress; sealing intact",
+          "Earthing — cable earth, motor body bond all secure"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E (500 V); record MΩ; compare baseline",
+          "Brake pad thickness — measure & record; replace if < minimum",
+          "Brake air gap — verify gap within spec; adjust actuator if required",
+          "Travel limit switch — actuate manually; verify NC/NO contacts; clean",
+          "Festoon cable IR test — Megger all cores; armour continuity check",
+          "Gearbox oil level — top up; check quality; change if scheduled",
+          "Coupling element — check flexible insert wear; replace if cracked",
+          "Terminal connections — torque check all lugs U1/V1/W1",
+          "Foundation bolts — all tight; check mounting structure for cracks",
+          "Earth continuity — motor frame to plant earth grid"
+        ]
+      },
+      {
+        "id": "cr1_chn",
+        "tag": "RCL-CR1-CHN",
+        "isHT": false,
+        "name": "Coal Reclaimer-1 (Cement Plant) – Chain Drive Motor",
+        "runningParams": [
+          {
+            "id": "cr1c_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr1c_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr1c_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr1c_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Drag chain — tension correct; no jumped links or seized pins",
+          "Chain lubrication — auto-lube spraying correctly; no dry sections",
+          "Drive & tail sprocket — tooth wear acceptable; no cracking",
+          "Scraper flights — no missing, bent or broken flights",
+          "Gearbox — oil level sight glass OK; no leakage; noise normal",
+          "Motor noise & vibration — no knocking or grinding"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Chain tension — measure sag; adjust take-up if required",
+          "Chain pin & bush wear — check elongation; replace if > 3%",
+          "Sprocket tooth profile — inspect for hooking or sharp wear",
+          "Gearbox oil sample — collect & check for metal particles",
+          "Chain lubrication system — clean nozzles; check pump operation",
+          "Motor bearing greasing — apply correct grade per schedule",
+          "Terminal connections — torque check; clean terminal box"
+        ]
+      },
+      {
+        "id": "cr1_crd",
+        "tag": "RCL-CR1-CRD",
+        "isHT": false,
+        "name": "Coal Reclaimer-1 (Cement Plant) – CRD Motor (Slip Ring)",
+        "runningParams": [
+          {
+            "id": "cr1r_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr1r_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr1r_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr1r_bgt",
+            "label": "Brush Gear Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "cr1r_rbt",
+            "label": "Resistance Box Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          }
+        ],
+        "runningChecks": [
+          "Carbon brush length — check against minimum wear mark on all brushes (all 3 phases)",
+          "Brush sparking — uniform light sparking only; no heavy or uneven sparking",
+          "Brush contact pressure — all spring fingers intact; brushes seated in holders",
+          "Slip ring surface — smooth & clean; no grooving, burning or carbon deposits",
+          "Brush holder insulation — no cracks, contamination or carbon tracking",
+          "Resistance box — all steps engaging smoothly; cooling fins unobstructed",
+          "Shorting contactor — operates at full speed; no chatter or bouncing",
+          "Rotor cable at brush gear — no looseness; no arcing marks at terminals"
+        ],
+        "stoppedChecks": [
+          "Carbon brush length — measure all; replace if any < 15 mm",
+          "Brush holder cleaning — blow out all carbon dust with dry air",
+          "Brush holder tightness — check clamping screws; holders must not rattle",
+          "Slip ring cleaning — wipe with lint-free dry cloth; check for grooving",
+          "Slip ring polishing — fine emery if pitted; check runout with dial gauge",
+          "Resistance box inspection — check contact tips, springs; clean contacts with IPA",
+          "Resistance box earthing — frame properly bonded to motor body; tighten if loose",
+          "Stator IR test — Megger Ph-Ph & Ph-E (500 V); record vs baseline",
+          "Rotor IR test — Megger all 3 rotor phases; check inter-phase balance",
+          "Brush gear earth bond — brush gear frame to motor frame continuity check",
+          "All terminal torques — stator & rotor terminals; record as-found values"
+        ]
+      },
+      {
+        "id": "cr1_hst",
+        "tag": "RCL-CR1-HST",
+        "isHT": false,
+        "name": "Coal Reclaimer-1 (Cement Plant) – Hoist Motor",
+        "runningParams": [
+          {
+            "id": "cr1h_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr1h_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr1h_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Hoist brake — releases fully on energise; holds load on de-energise",
+          "Wire rope — no broken wires, kinks or crushed strands visible",
+          "Upper & lower limit switches — correct operation; rope does not overwind",
+          "Drum rope layering — rope winds evenly; no crossed layers",
+          "Sheave & pulley block — pins intact; rope groove condition OK",
+          "Load holding — no drift when hoist stationary under load"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Brake pad thickness — measure; replace if at or below minimum",
+          "Brake spring force — check compression; replace weakened springs",
+          "Wire rope inspection — full length; check broken wires, corrosion, kinks",
+          "Wire rope lubrication — apply rope lube per schedule",
+          "Drum & rope anchor — check rope termination; flange condition",
+          "Gearbox oil level — check & top up; oil change if due",
+          "Limit switch cams — clean; verify trip positions",
+          "Coupling & mounting — all bolts tight; coupling element inspected"
+        ]
+      },
+      {
+        "id": "cr1_cmp",
+        "tag": "RCL-CR1-CMP",
+        "isHT": false,
+        "name": "Coal Reclaimer-1 (Cement Plant) – Compressor Motor",
+        "runningParams": [
+          {
+            "id": "cr1m_cu",
+            "label": "Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr1m_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr1m_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr1m_pr",
+            "label": "Delivery Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per system design"
+          },
+          {
+            "id": "cr1m_tp",
+            "label": "Receiver Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per safety valve set"
+          }
+        ],
+        "runningChecks": [
+          "Delivery pressure — within set point; pressure switch cycling normally",
+          "Safety relief valve — not lifting at normal pressure; no weeping",
+          "Air receiver — no condensate buildup; auto-drain operating correctly",
+          "Belt drive — tension OK; no slipping or squeal; guard in place",
+          "Motor noise & temperature — no abnormal noise; body temp normal",
+          "Air lines & fittings — no leaks audible or visible; no damaged hoses"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ value",
+          "Compressor valves — inspect inlet/delivery valves; replace if leaking",
+          "Belt tension & condition — re-tension per spec; replace if cracked/frayed",
+          "Belt drive alignment — check pulley alignment with straightedge",
+          "Air receiver drain — open & drain; check valve condition",
+          "Safety valve — manual lift test; check re-seating; replace if weeping",
+          "Oil level — check crankcase; top up to mark",
+          "Air filter element — inspect; clean or replace if blocked",
+          "Motor bearing greasing — correct grade per nameplate schedule"
+        ]
+      },
+      {
+        "id": "cr1_frk",
+        "tag": "RCL-CR1-FRK",
+        "isHT": false,
+        "name": "Coal Reclaimer-1 (Cement Plant) – Face Rake Motor",
+        "runningParams": [
+          {
+            "id": "cr1f_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr1f_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr1f_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr1f_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Rake tooth condition — no missing or severely worn teeth; no jamming",
+          "Gearbox oil level — sight glass / dipstick OK; no leakage",
+          "Motor & gearbox noise — no grinding or knocking",
+          "Drive chain or coupling — lubrication OK; no excessive play",
+          "Frame & mounting — no cracks; all mounting bolts intact"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Rake teeth — measure wear; replace teeth below minimum height",
+          "Gearbox oil change — drain & refill correct grade if scheduled",
+          "Gearbox bearing inspection — check condition; re-grease if required",
+          "Drive chain elongation — measure; replace if > 3% stretch",
+          "Motor bearing greasing — correct grade & quantity",
+          "Terminal connections — torque check; clean terminal box",
+          "Structural earthing — motor frame & rake frame to plant earth"
+        ]
+      },
+      {
+        "id": "cr2_trv",
+        "tag": "RCL-CR2-TRV",
+        "isHT": false,
+        "name": "Coal Reclaimer-2 (CPP) – Travel Drive Motor",
+        "runningParams": [
+          {
+            "id": "cr2t_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr2t_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr2t_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr2t_bnd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr2t_brk",
+            "label": "Brake Release Curr",
+            "unit": "A",
+            "phases": false,
+            "limit": "Per nameplate"
+          }
+        ],
+        "runningChecks": [
+          "Travel brake — fully releasing on energisation; no drag or residual friction",
+          "Travel limit switches (both ends) — flag positions, cam adjustment correct",
+          "Cable festoon / trailing cable — no kinking, tension or abrasion along rail",
+          "Festoon trolleys — all rollers free; no derailed carriers",
+          "Drive coupling & gearbox — no abnormal noise; oil seal intact",
+          "Motor body & terminal box — no moisture ingress; sealing intact",
+          "Earthing — cable earth, motor body bond all secure"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E (500 V); record MΩ; compare baseline",
+          "Brake pad thickness — measure & record; replace if < minimum",
+          "Brake air gap — verify gap within spec; adjust actuator if required",
+          "Travel limit switch — actuate manually; verify NC/NO contacts; clean",
+          "Festoon cable IR test — Megger all cores; armour continuity check",
+          "Gearbox oil level — top up; check quality; change if scheduled",
+          "Coupling element — check flexible insert wear; replace if cracked",
+          "Terminal connections — torque check all lugs U1/V1/W1",
+          "Foundation bolts — all tight; check mounting structure for cracks",
+          "Earth continuity — motor frame to plant earth grid"
+        ]
+      },
+      {
+        "id": "cr2_chn",
+        "tag": "RCL-CR2-CHN",
+        "isHT": false,
+        "name": "Coal Reclaimer-2 (CPP) – Chain Drive Motor",
+        "runningParams": [
+          {
+            "id": "cr2c_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr2c_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr2c_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr2c_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Drag chain — tension correct; no jumped links or seized pins",
+          "Chain lubrication — auto-lube spraying correctly; no dry sections",
+          "Drive & tail sprocket — tooth wear acceptable; no cracking",
+          "Scraper flights — no missing, bent or broken flights",
+          "Gearbox — oil level sight glass OK; no leakage; noise normal",
+          "Motor noise & vibration — no knocking or grinding"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Chain tension — measure sag; adjust take-up if required",
+          "Chain pin & bush wear — check elongation; replace if > 3%",
+          "Sprocket tooth profile — inspect for hooking or sharp wear",
+          "Gearbox oil sample — collect & check for metal particles",
+          "Chain lubrication system — clean nozzles; check pump operation",
+          "Motor bearing greasing — apply correct grade per schedule",
+          "Terminal connections — torque check; clean terminal box"
+        ]
+      },
+      {
+        "id": "cr2_crd",
+        "tag": "RCL-CR2-CRD",
+        "isHT": false,
+        "name": "Coal Reclaimer-2 (CPP) – CRD Motor (Slip Ring)",
+        "runningParams": [
+          {
+            "id": "cr2r_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr2r_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr2r_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr2r_bgt",
+            "label": "Brush Gear Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "cr2r_rbt",
+            "label": "Resistance Box Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          }
+        ],
+        "runningChecks": [
+          "Carbon brush length — check against minimum wear mark on all brushes (all 3 phases)",
+          "Brush sparking — uniform light sparking only; no heavy or uneven sparking",
+          "Brush contact pressure — all spring fingers intact; brushes seated in holders",
+          "Slip ring surface — smooth & clean; no grooving, burning or carbon deposits",
+          "Brush holder insulation — no cracks, contamination or carbon tracking",
+          "Resistance box — all steps engaging smoothly; cooling fins unobstructed",
+          "Shorting contactor — operates at full speed; no chatter or bouncing",
+          "Rotor cable at brush gear — no looseness; no arcing marks at terminals"
+        ],
+        "stoppedChecks": [
+          "Carbon brush length — measure all; replace if any < 15 mm",
+          "Brush holder cleaning — blow out all carbon dust with dry air",
+          "Brush holder tightness — check clamping screws; holders must not rattle",
+          "Slip ring cleaning — wipe with lint-free dry cloth; check for grooving",
+          "Slip ring polishing — fine emery if pitted; check runout with dial gauge",
+          "Resistance box inspection — check contact tips, springs; clean contacts with IPA",
+          "Resistance box earthing — frame properly bonded to motor body; tighten if loose",
+          "Stator IR test — Megger Ph-Ph & Ph-E (500 V); record vs baseline",
+          "Rotor IR test — Megger all 3 rotor phases; check inter-phase balance",
+          "Brush gear earth bond — brush gear frame to motor frame continuity check",
+          "All terminal torques — stator & rotor terminals; record as-found values"
+        ]
+      },
+      {
+        "id": "cr2_hst",
+        "tag": "RCL-CR2-HST",
+        "isHT": false,
+        "name": "Coal Reclaimer-2 (CPP) – Hoist Motor",
+        "runningParams": [
+          {
+            "id": "cr2h_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr2h_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr2h_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          }
+        ],
+        "runningChecks": [
+          "Hoist brake — releases fully on energise; holds load on de-energise",
+          "Wire rope — no broken wires, kinks or crushed strands visible",
+          "Upper & lower limit switches — correct operation; rope does not overwind",
+          "Drum rope layering — rope winds evenly; no crossed layers",
+          "Sheave & pulley block — pins intact; rope groove condition OK",
+          "Load holding — no drift when hoist stationary under load"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Brake pad thickness — measure; replace if at or below minimum",
+          "Brake spring force — check compression; replace weakened springs",
+          "Wire rope inspection — full length; check broken wires, corrosion, kinks",
+          "Wire rope lubrication — apply rope lube per schedule",
+          "Drum & rope anchor — check rope termination; flange condition",
+          "Gearbox oil level — check & top up; oil change if due",
+          "Limit switch cams — clean; verify trip positions",
+          "Coupling & mounting — all bolts tight; coupling element inspected"
+        ]
+      },
+      {
+        "id": "cr2_cmp",
+        "tag": "RCL-CR2-CMP",
+        "isHT": false,
+        "name": "Coal Reclaimer-2 (CPP) – Compressor Motor",
+        "runningParams": [
+          {
+            "id": "cr2m_cu",
+            "label": "Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr2m_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr2m_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr2m_pr",
+            "label": "Delivery Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per system design"
+          },
+          {
+            "id": "cr2m_tp",
+            "label": "Receiver Pressure",
+            "unit": "bar",
+            "phases": false,
+            "limit": "Per safety valve set"
+          }
+        ],
+        "runningChecks": [
+          "Delivery pressure — within set point; pressure switch cycling normally",
+          "Safety relief valve — not lifting at normal pressure; no weeping",
+          "Air receiver — no condensate buildup; auto-drain operating correctly",
+          "Belt drive — tension OK; no slipping or squeal; guard in place",
+          "Motor noise & temperature — no abnormal noise; body temp normal",
+          "Air lines & fittings — no leaks audible or visible; no damaged hoses"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ value",
+          "Compressor valves — inspect inlet/delivery valves; replace if leaking",
+          "Belt tension & condition — re-tension per spec; replace if cracked/frayed",
+          "Belt drive alignment — check pulley alignment with straightedge",
+          "Air receiver drain — open & drain; check valve condition",
+          "Safety valve — manual lift test; check re-seating; replace if weeping",
+          "Oil level — check crankcase; top up to mark",
+          "Air filter element — inspect; clean or replace if blocked",
+          "Motor bearing greasing — correct grade per nameplate schedule"
+        ]
+      },
+      {
+        "id": "cr2_frk",
+        "tag": "RCL-CR2-FRK",
+        "isHT": false,
+        "name": "Coal Reclaimer-2 (CPP) – Face Rake Motor",
+        "runningParams": [
+          {
+            "id": "cr2f_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cr2f_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cr2f_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cr2f_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          }
+        ],
+        "runningChecks": [
+          "Rake tooth condition — no missing or severely worn teeth; no jamming",
+          "Gearbox oil level — sight glass / dipstick OK; no leakage",
+          "Motor & gearbox noise — no grinding or knocking",
+          "Drive chain or coupling — lubrication OK; no excessive play",
+          "Frame & mounting — no cracks; all mounting bolts intact"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Rake teeth — measure wear; replace teeth below minimum height",
+          "Gearbox oil change — drain & refill correct grade if scheduled",
+          "Gearbox bearing inspection — check condition; re-grease if required",
+          "Drive chain elongation — measure; replace if > 3% stretch",
+          "Motor bearing greasing — correct grade & quantity",
+          "Terminal connections — torque check; clean terminal box",
+          "Structural earthing — motor frame & rake frame to plant earth"
+        ]
+      },
+      {
+        "id": "bc400",
+        "tag": "BC-400",
+        "isHT": false,
+        "name": "400 Belt Motor",
+        "runningParams": [
+          {
+            "id": "bc400_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bc400_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bc400_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bc400_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bc400_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "bc480",
+        "tag": "BC-480",
+        "isHT": false,
+        "name": "480 Belt Motor",
+        "runningParams": [
+          {
+            "id": "bc480_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bc480_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bc480_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bc480_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bc480_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "cpp_ch1",
+        "tag": "CPP-CH1",
+        "isHT": false,
+        "name": "CPP Channel-1 Belt Motor",
+        "runningParams": [
+          {
+            "id": "cpp_ch1_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cpp_ch1_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cpp_ch1_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cpp_ch1_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "cpp_ch1_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "cpp_ch2",
+        "tag": "CPP-CH2",
+        "isHT": false,
+        "name": "CPP Channel-2 Belt Motor",
+        "runningParams": [
+          {
+            "id": "cpp_ch2_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "cpp_ch2_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "cpp_ch2_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "cpp_ch2_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "cpp_ch2_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "ms_col01",
+        "tag": "MS-COL-01",
+        "isHT": false,
+        "name": "Magnetic Separator – Coal Section",
+        "runningParams": [
+          {
+            "id": "ms_col01_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": false,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "ms_col01_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "ms_col01_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "ms_col01_ct",
+            "label": "Magnet Coil Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          }
+        ],
+        "runningChecks": [
+          "Magnet belt — running centrally; no carryback on return side",
+          "Tramp iron discharge — iron/tramp being collected & deposited correctly",
+          "Magnet coil — no overheating; coil current within nameplate",
+          "Drive motor & gearbox — no abnormal noise or vibration",
+          "Suspension height — magnet at correct height above conveyor belt",
+          "Belt scrapers — cleaning belt adequately; no belt damage from scraper"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger; record MΩ value",
+          "Magnet coil resistance — measure DC resistance; compare vs nameplate",
+          "Magnet belt — check cuts, splice condition, edge wear",
+          "Belt drive — pulley lagging, belt tension; re-tension if slack",
+          "Suspension cables/frame — check corrosion, cracks, bolt tightness",
+          "Terminal connections — torque check motor & coil terminals",
+          "Earth bonding — magnet frame to plant earth; continuity check"
+        ]
+      }
+    ],
+    "common": [
+      {
+        "id": "pc_fri",
+        "name": "Pull Cord Switches",
+        "color": "#c0392b",
+        "icon": "🔴",
+        "items": [
+          {
+            "id": "pc_400h",
+            "tag": "PC-BC400-H",
+            "device": "Pull Cord – 400 Belt Head",
+            "check": "Pull & verify trip; reset & re-arm"
+          },
+          {
+            "id": "pc_400t",
+            "tag": "PC-BC400-T",
+            "device": "Pull Cord – 400 Belt Tail",
+            "check": "Pull & verify trip; re-arm"
+          },
+          {
+            "id": "pc_480h",
+            "tag": "PC-BC480-H",
+            "device": "Pull Cord – 480 Belt Head",
+            "check": "Pull & verify trip; reset & re-arm"
+          },
+          {
+            "id": "pc_480t",
+            "tag": "PC-BC480-T",
+            "device": "Pull Cord – 480 Belt Tail",
+            "check": "Pull & verify trip; re-arm"
+          },
+          {
+            "id": "pc_ch1h",
+            "tag": "PC-CH1-H",
+            "device": "Pull Cord – CPP CH1 Head",
+            "check": "Pull & verify trip; reset"
+          },
+          {
+            "id": "pc_ch2h",
+            "tag": "PC-CH2-H",
+            "device": "Pull Cord – CPP CH2 Head",
+            "check": "Pull & verify trip; reset"
+          }
+        ]
+      },
+      {
+        "id": "bsw_fri",
+        "name": "Belt Sway Switches",
+        "color": "#2980b9",
+        "icon": "🔵",
+        "items": [
+          {
+            "id": "bsw_400",
+            "tag": "BSW-BC400",
+            "device": "Belt Sway – 400 Belt",
+            "check": "Actuate; confirm trip & alarm at MCC"
+          },
+          {
+            "id": "bsw_480",
+            "tag": "BSW-BC480",
+            "device": "Belt Sway – 480 Belt",
+            "check": "Actuate; confirm trip & alarm"
+          },
+          {
+            "id": "bsw_ch1",
+            "tag": "BSW-CPP-CH1",
+            "device": "Belt Sway – CPP CH1",
+            "check": "Actuate; confirm trip"
+          },
+          {
+            "id": "bsw_ch2",
+            "tag": "BSW-CPP-CH2",
+            "device": "Belt Sway – CPP CH2",
+            "check": "Actuate; confirm trip"
+          }
+        ]
+      },
+      {
+        "id": "estop_fri",
+        "name": "Field Emergency Stops",
+        "color": "#e74c3c",
+        "icon": "🆘",
+        "items": [
+          {
+            "id": "es_cr1",
+            "tag": "ES-CR1",
+            "device": "E-Stop – Coal Reclaimer-1 Area",
+            "check": "Press & release; verify trip; confirm panel"
+          },
+          {
+            "id": "es_cr2",
+            "tag": "ES-CR2",
+            "device": "E-Stop – Coal Reclaimer-2 Area",
+            "check": "Press & release; verify trip"
+          },
+          {
+            "id": "es_400",
+            "tag": "ES-BC400",
+            "device": "E-Stop – 400 Belt Area",
+            "check": "Press & release; verify trip & alarm"
+          },
+          {
+            "id": "es_cpp",
+            "tag": "ES-CPP-CH",
+            "device": "E-Stop – CPP Channel Area",
+            "check": "Press & release; verify trip"
+          }
+        ]
+      },
+      {
+        "id": "lt_fri",
+        "name": "Area Lighting",
+        "color": "#d68910",
+        "icon": "💡",
+        "items": [
+          {
+            "id": "lt_cr1",
+            "tag": "LT-CR1",
+            "device": "Coal Reclaimer-1 Area Lighting",
+            "check": "All luminaires ON; MCB OK"
+          },
+          {
+            "id": "lt_cr2",
+            "tag": "LT-CR2",
+            "device": "Coal Reclaimer-2 Area Lighting",
+            "check": "All luminaires ON; MCB OK"
+          },
+          {
+            "id": "lt_400",
+            "tag": "LT-BC400",
+            "device": "400 Belt Gallery Lighting",
+            "check": "Walk gallery; all lamps working"
+          },
+          {
+            "id": "lt_480",
+            "tag": "LT-BC480",
+            "device": "480 Belt Gallery Lighting",
+            "check": "Walk gallery; all lamps working"
+          },
+          {
+            "id": "lt_cpp",
+            "tag": "LT-CPP-CH",
+            "device": "CPP Channel Belt Lighting",
+            "check": "All luminaires ON; MCB status OK"
+          },
+          {
+            "id": "lt_el_fri",
+            "tag": "EL-FR-01–04",
+            "device": "Emergency Luminaires – Coal",
+            "check": "Self-test; 3 hr backup OK"
+          }
+        ]
+      }
+    ]
+  },
+  "sat": {
+    "label": "Saturday · Coal Crusher & Stacker",
+    "formLabel": "Saturday – Coal Crusher & Stacker",
+    "equip": [
+      {
+        "id": "ccr_ht",
+        "tag": "CCR-HT-001",
+        "isHT": true,
+        "name": "Coal Crusher – HT Motor + LRS",
+        "runningParams": [
+          {
+            "id": "ccr_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "ccr_vo",
+            "label": "Supply Voltage",
+            "unit": "kV",
+            "phases": false,
+            "limit": "6.6 kV ± 6%"
+          },
+          {
+            "id": "ccr_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "ccr_bnd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "ccr_rd",
+            "label": "Motor Winding Temp (RTD)",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 130°C (Cl.F)"
+          },
+          {
+            "id": "ccr_kw",
+            "label": "Crusher Load / kW",
+            "unit": "kW",
+            "phases": false,
+            "limit": "< 90% rated"
+          },
+          {
+            "id": "ccr_vb",
+            "label": "Vibration",
+            "unit": "mm/s",
+            "phases": false,
+            "limit": "< 4.5 mm/s"
+          },
+          {
+            "id": "lrs_lv",
+            "label": "LRS Electrolyte Level",
+            "unit": "",
+            "phases": false,
+            "limit": "At marked line"
+          },
+          {
+            "id": "lrs_tp",
+            "label": "LRS Electrolyte Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 60°C"
+          }
+        ],
+        "runningChecks": [
+          "LRS tank electrolyte level — at marked line; top up if low",
+          "LRS cooling water flow — inlet/outlet flow & temperature normal",
+          "LRS electrode drive mechanism — smooth operation; no jamming",
+          "LRS control cabinet — no fault/alarm on display; auto-manual correct",
+          "HT motor terminal box visual — no moisture; sealing intact",
+          "HT cable termination (outdoor) — gland, stress cone, armouring OK",
+          "REF615 relay LED status — green = healthy; amber/red → investigate",
+          "VD4 breaker position indicator — racked-in, service position confirmed",
+          "HT motor earthing & body bonding — all connections secure",
+          "Crusher bearing lubrication level — oil / grease nipple OK",
+          "Abnormal noise / vibration — no knocking or grinding"
+        ],
+        "stoppedChecks": [
+          "HT motor IR test (Megger 5 kV) — Ph-Ph & Ph-E; DAR / PI ratio; record",
+          "LRS electrolyte specific gravity — compare with commissioning record",
+          "LRS electrolyte quality — check colour; change if discoloured",
+          "LRS electrode condition — corrosion, pitting, deposition check",
+          "LRS shorting contactor — contact wear, gap, spring pressure, coil",
+          "LRS panel interiors — cleaning; all terminals torque check",
+          "HT motor terminal box — open & inspect; connections, PD indicators",
+          "HT cable outdoor section — armour continuity; insulation visual",
+          "REF615 relay self-test & settings verification — record settings",
+          "VD4 CB — contact erosion indicator; lubrication; mechanism check",
+          "VD4 CB tripping test (if permitted) — trip & close; verify timing",
+          "Crusher structure earth check — crusher frame to earth grid",
+          "Motor space heater circuit — Megger space heater; wiring condition"
+        ]
+      },
+      {
+        "id": "stk_trv",
+        "tag": "STK-COL-TRV",
+        "isHT": false,
+        "name": "Coal Stacker – Travel Drive Motor (with Brake)",
+        "runningParams": [
+          {
+            "id": "stt_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "stt_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "stt_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "stt_bnd",
+            "label": "Bearing Temp NDE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "stt_brk",
+            "label": "Brake Release Curr",
+            "unit": "A",
+            "phases": false,
+            "limit": "Per nameplate"
+          }
+        ],
+        "runningChecks": [
+          "Travel brake — fully releases on energisation; holds on de-energise; no drag",
+          "Travel limit switches (both ends) — correct position; flags properly set",
+          "Cable reel / festoon — take-up smooth; no cable slack dragging on rail",
+          "Festoon trolleys — all rollers free; no derailed carriers",
+          "Rail & wheel condition — no debris; flanges not binding; lubrication OK",
+          "Drive gearbox — no abnormal noise; oil seal intact",
+          "Motor noise & vibration — no knocking or excessive vibration"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E (500 V); record MΩ; compare baseline",
+          "Brake pad thickness — measure & record; replace if < minimum limit",
+          "Brake air gap — verify within spec; adjust if required",
+          "Brake solenoid coil — measure coil resistance; compare nameplate",
+          "Travel limit switch — manual actuation; verify NC/NO contacts; clean",
+          "Festoon cable insulation — Megger all cores; armour continuity check",
+          "Wheel flange wear — measure; replace if worn beyond limit",
+          "Gearbox oil — level & condition; change if scheduled",
+          "Coupling element — inspect flexible insert; replace if cracked",
+          "Terminal connections — torque check U1/V1/W1; clean terminal box",
+          "Earth continuity — motor frame & stacker rail to plant earth grid"
+        ]
+      },
+      {
+        "id": "stk_crd",
+        "tag": "STK-COL-CRD",
+        "isHT": false,
+        "name": "Coal Stacker – CRD Motor (Slip Ring, with Brake)",
+        "runningParams": [
+          {
+            "id": "stcr_cu",
+            "label": "Stator Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "stcr_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "stcr_bde",
+            "label": "Bearing Temp DE",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "stcr_bgt",
+            "label": "Brush Gear Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "stcr_rbt",
+            "label": "Resistance Box Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 100°C"
+          },
+          {
+            "id": "stcr_brk",
+            "label": "Brake Release Curr",
+            "unit": "A",
+            "phases": false,
+            "limit": "Per nameplate"
+          }
+        ],
+        "runningChecks": [
+          "Brake — fully releases on energise; holds load on de-energise; no drag",
+          "Carbon brush length — check against minimum wear mark on all phases",
+          "Brush sparking — light uniform sparking only; no heavy or uneven arcing",
+          "Brush contact pressure — all spring fingers intact; brushes seated",
+          "Slip ring surface — smooth & clean; no grooving, burning or deposits",
+          "Brush holder insulation — no cracks, contamination or carbon tracking",
+          "Resistance box — all steps engaging; cooling fins unobstructed",
+          "Shorting contactor — operates at full speed; no chatter"
+        ],
+        "stoppedChecks": [
+          "Carbon brush length — measure all; replace if any < 15 mm",
+          "Brush holder cleaning — blow out carbon dust with dry compressed air",
+          "Slip ring cleaning — dry lint-free cloth; check grooving; polish if pitted",
+          "Resistance box — inspect contact tips, springs; clean with IPA",
+          "Stator IR test — Megger Ph-Ph & Ph-E (500 V); record vs baseline",
+          "Rotor IR test — Megger all 3 rotor phases; check inter-phase balance",
+          "Brake pad thickness — measure; replace if at minimum",
+          "Brake air gap — check & adjust per spec",
+          "Brake coil resistance — measure; compare vs nameplate",
+          "Terminal torque check — all stator & rotor terminals; record as-found",
+          "Earth bonding — brush gear frame, motor frame to plant earth"
+        ]
+      },
+      {
+        "id": "stk_bom",
+        "tag": "STK-COL-BOM",
+        "isHT": false,
+        "name": "Coal Stacker – Boom Conveyor Motor",
+        "runningParams": [
+          {
+            "id": "bom_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bom_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bom_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bom_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bom_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Boom belt tracking — central throughout boom length; no edge rubbing",
+          "Head & tail pulley — no carryback; lagging intact",
+          "Pull cord switches along boom — all in reset; cables intact",
+          "Discharge at boom tip — material discharging correctly; no blockage",
+          "Belt sway switch — not tripped at normal operation",
+          "Motor & gearbox — no abnormal noise; oil seal intact",
+          "Boom structure — no unusual flex or vibration during loaded run"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ",
+          "Idler inspection — replace seized or noisy idlers",
+          "Belt splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition check; no lifted sections",
+          "Pull cord function test — verify MCC trip response",
+          "Gearbox oil — level; top up or change per schedule",
+          "Motor terminal connections — torque check; clean box",
+          "Earth continuity — boom frame to plant earth bus"
+        ]
+      },
+      {
+        "id": "bc211_050",
+        "tag": "211BC050",
+        "isHT": false,
+        "name": "211BC050 Motor",
+        "runningParams": [
+          {
+            "id": "bc211_050_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bc211_050_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bc211_050_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bc211_050_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bc211_050_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      },
+      {
+        "id": "bc211_100",
+        "tag": "211BC100",
+        "isHT": false,
+        "name": "211BC100 Motor",
+        "runningParams": [
+          {
+            "id": "bc211_100_cu",
+            "label": "Drive Motor Current",
+            "unit": "A",
+            "phases": true,
+            "limit": "≤ FLA"
+          },
+          {
+            "id": "bc211_100_vo",
+            "label": "Supply Voltage",
+            "unit": "V",
+            "phases": false,
+            "limit": "415 ± 6%"
+          },
+          {
+            "id": "bc211_100_bt",
+            "label": "Motor Bearing Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 85°C"
+          },
+          {
+            "id": "bc211_100_gt",
+            "label": "Gearbox Temp",
+            "unit": "°C",
+            "phases": false,
+            "limit": "< 80°C"
+          },
+          {
+            "id": "bc211_100_sp",
+            "label": "Belt Speed",
+            "unit": "m/s",
+            "phases": false,
+            "limit": "Design speed"
+          }
+        ],
+        "runningChecks": [
+          "Belt tracking — belt central at head, tail and all return idlers",
+          "Head & tail pulley — no carryback; lagging intact; belt wrap OK",
+          "Pull cord & belt sway switches — in reset; cable intact along gallery",
+          "Discharge chute — no blockage; skirt board sealing rubber intact",
+          "Under-speed switch — no trip signal at normal running speed",
+          "Motor & gearbox — no abnormal noise; oil seal intact; no leakage",
+          "Idlers — no seized or noisy idlers; no belt edge damage"
+        ],
+        "stoppedChecks": [
+          "Motor IR test — Megger Ph-Ph & Ph-E; record MΩ values",
+          "Idler inspection — replace all seized, noisy or misaligned idlers",
+          "Belt joint / splice — visual integrity; no separation or edge fraying",
+          "Pulley lagging — condition; no lifting, cracking or worn patches",
+          "Pull cord & belt sway function test — verify MCC trip response",
+          "Under-speed switch calibration — verify trip speed vs design",
+          "Gearbox oil — level check; top up or change per schedule",
+          "MCC cubicle — contactor, relay, terminals, bus bar inspection",
+          "Earth continuity — belt structure to plant earth bus"
+        ]
+      }
+    ],
+    "common": [
+      {
+        "id": "pc_sat",
+        "name": "Pull Cord Switches",
+        "color": "#c0392b",
+        "icon": "🔴",
+        "items": [
+          {
+            "id": "pc_bom_h",
+            "tag": "PC-BOM-H",
+            "device": "Pull Cord – Boom Conveyor Head",
+            "check": "Pull & verify trip at MCC; reset & re-arm"
+          },
+          {
+            "id": "pc_bom_t",
+            "tag": "PC-BOM-T",
+            "device": "Pull Cord – Boom Conveyor Tail",
+            "check": "Pull & verify trip; re-arm"
+          },
+          {
+            "id": "pc_050h",
+            "tag": "PC-211050-H",
+            "device": "Pull Cord – 211BC050 Head",
+            "check": "Pull & verify trip; reset; cable intact"
+          },
+          {
+            "id": "pc_100h",
+            "tag": "PC-211100-H",
+            "device": "Pull Cord – 211BC100 Head",
+            "check": "Pull & verify trip; reset; re-arm"
+          }
+        ]
+      },
+      {
+        "id": "bsw_sat",
+        "name": "Belt Sway Switches",
+        "color": "#2980b9",
+        "icon": "🔵",
+        "items": [
+          {
+            "id": "bsw_bom",
+            "tag": "BSW-BOM",
+            "device": "Belt Sway – Boom Conveyor",
+            "check": "Manually actuate; confirm trip & alarm at MCC"
+          },
+          {
+            "id": "bsw_050",
+            "tag": "BSW-211050",
+            "device": "Belt Sway – 211BC050",
+            "check": "Manually actuate; confirm trip"
+          },
+          {
+            "id": "bsw_100",
+            "tag": "BSW-211100",
+            "device": "Belt Sway – 211BC100",
+            "check": "Manually actuate; confirm trip"
+          }
+        ]
+      },
+      {
+        "id": "estop_sat",
+        "name": "Field Emergency Stops",
+        "color": "#e74c3c",
+        "icon": "🆘",
+        "items": [
+          {
+            "id": "es_ccr1",
+            "tag": "ES-CCR-001",
+            "device": "E-Stop – Coal Crusher Area",
+            "check": "Press & release; verify trip; confirm HT panel"
+          },
+          {
+            "id": "es_stk1",
+            "tag": "ES-STK-COL",
+            "device": "E-Stop – Coal Stacker Area",
+            "check": "Press & release; verify trip & alarm"
+          },
+          {
+            "id": "es_211_1",
+            "tag": "ES-211050",
+            "device": "E-Stop – 211BC050 Area",
+            "check": "Press & release; verify trip"
+          },
+          {
+            "id": "es_211_2",
+            "tag": "ES-211100",
+            "device": "E-Stop – 211BC100 Area",
+            "check": "Press & release; verify trip"
+          }
+        ]
+      },
+      {
+        "id": "lt_sat",
+        "name": "Area Lighting",
+        "color": "#d68910",
+        "icon": "💡",
+        "items": [
+          {
+            "id": "lt_ccr",
+            "tag": "LT-CCR",
+            "device": "Coal Crusher Bay Lighting",
+            "check": "All luminaires ON; no dark spots; MCB OK"
+          },
+          {
+            "id": "lt_stk",
+            "tag": "LT-STK-COL",
+            "device": "Coal Stacker Area Floodlights",
+            "check": "All floodlights ON; dusk sensor OK"
+          },
+          {
+            "id": "lt_050",
+            "tag": "LT-211050",
+            "device": "211BC050 Gallery Lighting",
+            "check": "Walk gallery; all lamps working"
+          },
+          {
+            "id": "lt_100",
+            "tag": "LT-211100",
+            "device": "211BC100 Gallery Lighting",
+            "check": "Walk gallery; all lamps working"
+          },
+          {
+            "id": "lt_el_sat",
+            "tag": "EL-SA-01–04",
+            "device": "Emergency Luminaires – Coal Crusher/Stacker",
+            "check": "Self-test; 3 hr backup OK"
+          }
+        ]
+      }
+    ]
+  }
+};

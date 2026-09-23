@@ -1,240 +1,145 @@
-# OCL Maintenance — Operations Guide
+# Operations
 
-**This is the guide for your live installation.** It describes what is running,
-where it lives, and what to do when something needs attention.
+Runbook for the Adani Cements plant log on the Oracle VPS (`free-try1`,
+`158.101.199.190`, Ubuntu arm64).
 
----
+## What runs where
 
-## Where everything is
-
-| Thing | Value |
+| Piece | Detail |
 |---|---|
-| Admin web page | **https://ocl.vishryfarms.com** |
-| API health check | https://ocl.vishryfarms.com/healthz |
-| Server | Oracle VPS `158.101.199.190` (`free-try1`), Ubuntu 26.04, arm64 |
-| SSH login | `ssh -i <key> ubuntu@158.101.199.190` |
-| Project on server | `/opt/ocl-maintenance` |
-| Database | Docker volume `ocl-maintenance_ocl-data` (`/data/ocl.db` inside) |
-| Uploaded APKs | `/opt/ocl-maintenance/releases` |
-| nginx site file | `/etc/nginx/sites-available/ocl-maintenance` |
-| Certificate | `/etc/letsencrypt/live/ocl.vishryfarms.com/` (auto-renewing) |
-| Container | `ocl-maintenance-api-1`, listening on `127.0.0.1:3100` |
+| Web app | Next.js, `127.0.0.1:43127`, unit `ocl-technician-log.service` |
+| Code | `/opt/ocl-technician-log` (git checkout of `main`) |
+| Live data | `/opt/ocl-technician-log/data` (gitignored — not in git) |
+| Public HTTPS | https://ocl.vishryfarms.com via nginx site `ocl-plant-log` |
+| Public HTTP | http://158.101.199.190 via nginx site `ocl-technician-log` |
+| TLS cert | `/etc/letsencrypt/live/ocl.vishryfarms.com/` (certbot, auto-renews) |
+| Secrets | `/etc/ocl-technician-log.env`, mode 0600 |
+| Backups | `/var/backups/ocl-technician-log/` |
 
-Your admin account is `admin`. **Change the password** from the admin page
-(**Change password**, top right) if you have not already.
+The bare-IP HTTP site exists **only** because phones running APK 1.9.0 have
+`http://158.101.199.190` compiled in. Do not remove it while any of those phones
+are still in use. Traffic over it is unencrypted; move devices to
+`https://ocl.vishryfarms.com` (long-press the app title) and retire it once none
+remain.
 
----
+This VPS hosts unrelated live services (`archive`, `cloudflared`,
+`fleet-dashboard`, tunnels, other apps). Changes here must stay additive — do not
+touch their nginx sites, ports, or units.
 
-## Important: this server does other work
-
-It also runs your fleet dashboard, archive app, Cloudflare Tunnel and trading
-services. This installation is **deliberately additive** and does not touch any
-of them:
-
-- It does **not** use Caddy or claim ports 80/443 — your existing nginx stays in
-  charge, and OCL is just one extra site file.
-- The API container binds to **127.0.0.1:3100 only**, so it is not directly
-  reachable from the internet; all traffic arrives through nginx over HTTPS.
-- The install scripts validate the nginx config **before** reloading and roll
-  back automatically if anything is wrong.
-
----
-
-## Day-to-day: everything is done from the browser
-
-You should not need a terminal for normal use.
-
-| Task | Where |
-|---|---|
-| Add or remove a technician | Admin page → **Users** |
-| Reset someone's password | Admin page → **Users** → Reset password |
-| Disable a lost phone's account | Admin page → **Users** → Disable |
-| Look up any day's records | Admin page → **Records**, or the app's 🗂 Records tab |
-| Print or save a record as PDF | Admin page → Records → **View** → Print |
-| Change checklist fields | **In the app**: 🗂 Records → ✏️ Edit fields → Save |
-| Release a new app version | Admin page → **App releases** → upload APK |
-
----
-
-## Releasing a new app version
-
-1. Build the APK with a **higher version code** (see `app/README.md`).
-2. Admin page → **App releases** → choose the APK, enter the version code and
-   name, add notes, click **Upload & publish**.
-3. Every phone is offered the update next time the app opens.
-
-The version code must always increase. If it does not, no phone will notice.
-
----
-
-## If something goes wrong
-
-### The admin page will not load
+## Deploying a change
 
 ```bash
-ssh -i <key> ubuntu@158.101.199.190
-cd /opt/ocl-maintenance
-sudo docker compose ps          # is the container up?
-sudo docker compose logs --tail 50 api
-curl -s http://127.0.0.1:3100/healthz
-```
-
-If the container is down:
-
-```bash
-sudo docker compose up -d
-```
-
-If nginx is the problem:
-
-```bash
-sudo nginx -t                   # should say "test is successful"
-sudo systemctl reload nginx
-```
-
-### The certificate did not renew
-
-Certificates renew automatically, but you can force it and it is safe to run:
-
-```bash
-sudo certbot renew --dry-run    # test
-sudo certbot renew              # apply
-sudo systemctl reload nginx
-```
-
-### I need to change the admin password from the server
-
-```bash
-cd /opt/ocl-maintenance
-sudo docker compose exec api node src/hashpw.js 'NewPassword123'
-sudo docker compose exec api node -e "
-  const {Users}=require('./src/db');const {hashPassword}=require('./src/auth');
-  Users.setPassword(1, hashPassword('NewPassword123'));console.log('done');"
-```
-
-### Backups
-
-A backup is taken automatically before every deploy, kept in
-`/opt/ocl-maintenance/backups/` (the 14 most recent).
-
-**Do not back up by copying `ocl.db` on its own.** This database runs in WAL
-mode, so committed rows may live in `ocl.db-wal` while `ocl.db` holds only a few
-kilobytes of empty schema — a plain copy can look like a valid backup and contain
-nothing. That mistake was made once during setup and is why `deploy/update.sh`
-now uses SQLite's own backup API.
-
-To take one by hand:
-
-```bash
-cd /opt/ocl-maintenance
-STAMP=$(date +%F-%H%M)
-sudo docker exec ocl-maintenance-api-1 node src/db.js backup /data/bk.db
-sudo docker cp ocl-maintenance-api-1:/data/bk.db "backups/ocl-${STAMP}.db"
-sudo docker exec ocl-maintenance-api-1 rm -f /data/bk.db
-ls -l "backups/ocl-${STAMP}.db"
-```
-
-A healthy backup is roughly **160 KB and growing**. If you see one of about
-**4 KB, it is empty** — something went wrong, do not rely on it.
-
-**Copy backups off the server** (email, USB stick, cloud drive). A backup that
-only exists on the same disk is not a backup.
-
-To restore: stop the stack, put the backup in the volume as `ocl.db`, and start
-again:
-
-```bash
-cd /opt/ocl-maintenance
-sudo docker compose down
-sudo docker run --rm -v ocl-maintenance_ocl-data:/data -v "$PWD/backups:/bk" \
-  alpine sh -c 'cp /bk/ocl-YOUR-BACKUP.db /data/ocl.db && rm -f /data/ocl.db-wal /data/ocl.db-shm'
-sudo docker compose up -d
-```
-
-To verify a backup really contains your data before trusting it:
-
-```bash
-sudo docker cp backups/ocl-YOUR-BACKUP.db ocl-maintenance-api-1:/data/check.db
-sudo docker exec ocl-maintenance-api-1 node -e "
-  const D=require('better-sqlite3');const d=new D('/data/check.db',{readonly:true});
-  console.log('users:',d.prepare('SELECT COUNT(*) n FROM users').get().n);
-  console.log('records:',d.prepare('SELECT COUNT(*) n FROM records').get().n);
-  console.log('configs:',d.prepare('SELECT COUNT(*) n FROM configs').get().n);d.close();"
-sudo docker exec ocl-maintenance-api-1 rm -f /data/check.db
-```
-
-### Updating the code
-
-`/opt/ocl-maintenance` is a **git checkout of this repository**, and the deploy
-key installed on the server already has read/write access — so updating is:
-
-```bash
-ssh -i <key> ubuntu@158.101.199.190
-cd /opt/ocl-maintenance
+cd /opt/ocl-technician-log
 git pull origin main
-bash deploy/update.sh
+sudo bash deploy/update.sh
 ```
 
-`update.sh` backs the database up first, rebuilds, restarts, waits for the health
-check, and confirms your other services are still running.
+`deploy/update.sh` stops the service, stashes the current build, rebuilds, and
+health-checks. If the build or the health check fails it restores the previous
+build and restarts, so a bad commit does not take the plant log down. It then
+prunes old builds, reloads nginx only if `nginx -t` passes, and verifies both
+public endpoints.
 
-Your `.env` and the database are **not** in git — `.env` is gitignored and the
-database lives in a Docker volume — so pulling and rebuilding cannot lose either.
-
----
-
-## Automatic deploys (optional, not enabled)
-
-`.github/workflows/deploy.yml` can deploy on every push, but its deploy job stays
-inactive until five secrets exist in
-**GitHub → Settings → Secrets and variables → Actions**:
-
-| Secret | Value |
-|---|---|
-| `VPS_HOST` | `158.101.199.190` |
-| `VPS_USER` | `ubuntu` |
-| `VPS_SSH_KEY` | a private key that can log in as that user |
-| `VPS_PATH` | `/opt/ocl-maintenance` |
-| `VPS_PORT` | `22` (optional) |
-
-Until then the deploy job skips itself with a notice — it does not fail the build,
-and the server is untouched. The **test job still runs on every push**, which is
-useful on its own: your API tests are checked automatically.
-
----
-
-## Undoing this installation completely
-
-Nothing else on the server depends on it, so this is safe:
+## Backups
 
 ```bash
-cd /opt/ocl-maintenance
-sudo docker compose down -v                                   # stop + delete database
-sudo rm -f /etc/nginx/sites-enabled/ocl-maintenance \
-           /etc/nginx/sites-available/ocl-maintenance
-sudo nginx -t && sudo systemctl reload nginx
+sudo bash deploy/backup.sh
 ```
 
-Then delete the `ocl` DNS record in Cloudflare if you no longer want the name.
+Writes a verified `ocl-data-<UTC>.tar.gz` to `/var/backups/ocl-technician-log/`
+and keeps the newest 14. It fails loudly if the archive does not actually
+contain `data/submissions.json` — an empty-looking tarball is the classic silent
+backup failure.
 
----
+To run it nightly:
 
-## What to check after any change
+```bash
+sudo tee /etc/systemd/system/ocl-backup.service >/dev/null <<'EOF'
+[Unit]
+Description=Back up OCL plant log data
 
-1. `https://ocl.vishryfarms.com/healthz` returns `{"ok":true,...}`
-2. The admin page loads and you can sign in
-3. Open the app on a phone, submit a test checklist, confirm it appears in
-   Records
-4. Confirm your other services still respond
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/ocl-technician-log/deploy/backup.sh
+EOF
 
----
+sudo tee /etc/systemd/system/ocl-backup.timer >/dev/null <<'EOF'
+[Unit]
+Description=Nightly OCL plant log backup
 
-## Known limitations
+[Timer]
+OnCalendar=*-*-* 20:30:00
+Persistent=true
 
-- **The app has not been tested on a physical phone.** Everything was verified
-  with automated tests and against the live API, but no device was available.
-  Test the print/PDF feature first — it relies on Android's print framework,
-  which only exists on a real device.
-- Two app tests are skipped; the reason is documented in `app/README.md`.
-- Deleting a record is admin-only. Technicians cannot remove previously recorded
-  values, by design.
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now ocl-backup.timer
+sudo systemctl list-timers ocl-backup.timer
+```
+
+### Restore
+
+```bash
+sudo systemctl stop ocl-technician-log
+cd /opt/ocl-technician-log
+sudo mv data data.broken-$(date -u +%Y%m%dT%H%M%SZ)
+sudo tar xzf /var/backups/ocl-technician-log/ocl-data-<STAMP>.tar.gz
+sudo chown -R ubuntu:ubuntu data
+sudo systemctl start ocl-technician-log
+curl -fsS http://127.0.0.1:43127/api/health; echo
+```
+
+Then sign in as admin and check **History** shows the expected records.
+
+## TLS
+
+```bash
+sudo certbot renew --dry-run     # confirm renewal still works
+sudo certbot certificates        # expiry
+systemctl list-timers certbot.timer
+```
+
+Renewal uses the webroot `/var/www/html`; the port-80 server block for
+`ocl.vishryfarms.com` must keep its `/.well-known/acme-challenge/` location or
+renewal will fail.
+
+## Common problems
+
+**Phones show "Cannot reach plant server".**
+Check `systemctl status ocl-technician-log`, then `curl -fsS
+http://127.0.0.1:43127/api/health`. If the service is up, check that the
+bare-IP nginx site still exists — phones on 1.9.0 cannot use the domain.
+
+**Login says the session expired immediately.**
+Cookies are `httpOnly`, `sameSite=lax`, and intentionally **not** `secure`, so
+that the same session works over both the HTTPS domain and the bare-IP HTTP
+site. If you set `secure`, logins over the IP will break.
+
+**Discord stopped posting.**
+The webhook is in `/etc/ocl-technician-log.env`. A rotated or deleted webhook is
+the usual cause. Check `data/notify-last.json` for the last attempt and its
+error. Discord failure never rolls back a saved record.
+
+**A technician's submit PIN is locked.**
+5 wrong attempts locks it for 15 minutes. An admin can reset it in **People**.
+
+**An admin wants to publish a catalogue change.**
+**Catalogue** → weekday → equipment card → **Add field** → **Publish to plant
+server**. Technicians pick it up on next load.
+
+**The APK must be rebuilt.**
+Read `android/README.md` first. The `android/` source in this repo is **older
+than the app in the field**, and `publishToPlantServer` refuses to publish it —
+overwriting the live APK with an older build would leave phones unable to
+install. The APK currently served is preserved at
+`android/shipped/ocl-maintenance-v1.9.0-code11.apk`.
+
+## History
+
+The earlier Express + SQLite API that served `ocl.vishryfarms.com` was retired
+once this app replaced it. Its code is preserved on the git tag
+`archive/ocl-maintenance-api-server`, and its database plus a full tree snapshot
+are in `/var/backups/ocl-maintenance-retired/`.

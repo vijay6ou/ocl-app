@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.OCL" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/ocl_navy</item>
+        <item name="android:navigationBarColor">@color/ocl_navy</item>
+        <item name="android:windowBackground">@color/ocl_navy</item>
+        <item name="android:colorPrimary">@color/ocl_navy</item>
+        <item name="android:colorAccent">@color/ocl_gold</item>
+    </style>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OCL Maintenance</string>
+    <string name="admin_plant_server">Plant server (admin)</string>
+    <string name="server_hint">Plant server</string>
+    <string name="save_server">Save</string>
+    <string name="retry">Retry</string>
+    <string name="continue_offline">Continue on this phone</string>
+    <string name="cannot_reach_title">Cannot reach plant server</string>
+    <string name="cannot_reach">This phone cannot reach the plant log server. Check Wi-Fi or mobile data, then tap Retry.</string>
+    <string name="enter_or_offline">Enter a plant server address, or tap Retry.</string>
+    <string name="still_unreachable">Still cannot reach the plant server. Check the connection, then tap Retry.</string>
+    <string name="loading">Opening plant log…</string>
+    <string name="update_title">App update</string>
+    <string name="update_message">A newer technician app is on the plant server. Download and install it now?</string>
+    <string name="update_now">Install update</string>
+    <string name="later">Later</string>
+    <string name="photo_chooser">Attach defect photo</string>
+</resources>

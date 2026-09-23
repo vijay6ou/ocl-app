@@ -1,227 +1,174 @@
-# OCL Maintenance
+# Adani Cements Weekly Electrical Maintenance
 
-Field maintenance register for Orient Cement Limited — an Android app, a
-self-hosted backend, and a browser admin page.
+Technician log for **Adani Cements, Electrical Department, Chittapur**. One plant
+section per weekday (Mon–Sat). The server file store is the source of truth for
+the equipment catalogue, people, submissions, and defect photos.
 
-Replaces the earlier Google-Sheets-based design, which could not support real
-logins, offline work, or remote device management.
+Technicians use the Android app; admins use the web. Admins publish the live
+catalogue from a Forms-style builder with no code. After a successful submit the
+plant server posts **four Discord messages** in that date's thread (full form,
+faults, photos, PDF). Discord is the only notify channel.
 
-```
-┌─────────────────┐   HTTPS    ┌──────────────────────────────┐
-│  Android app    │ ─────────▶ │  Your VPS                    │
-│  (field phones) │            │  ├─ Caddy   (auto HTTPS)     │
-│                 │ ◀───────── │  ├─ API     (Node + SQLite)  │
-└─────────────────┘            │  └─ /releases  (APK updates) │
-        ▲                      └──────────────────────────────┘
-        │                                    ▲
-        │  APK download                      │ git push → auto-deploy
-        └────────────────────────────┐       │
-                                     │  ┌────┴─────┐
-                                     └──│  GitHub  │
-                                        └──────────┘
-```
+The app UI never shows the server address, Discord webhook, or env paths.
+User-visible branding is **Adani Cements**.
 
----
+## Live deployment
 
-## What's here
-
-| Path | What it is |
+| | |
 |---|---|
-| `app/` | The Android app (WebView wrapper + the checklist UI) |
-| `server/` | Node.js + SQLite API, admin web page, APK upload |
-| `server/test/` | 45 API tests, run by CI before every deploy |
-| `deploy/setup-vps.sh` | One-time server setup (Docker, firewall, DuckDNS) |
-| `deploy/update.sh` | Pull, back up, rebuild, health-check |
-| `docker-compose.yml`, `Caddyfile` | The running stack |
-| `.github/workflows/deploy.yml` | Push to `main` → tests → auto-deploy |
+| Web app (HTTPS) | https://ocl.vishryfarms.com |
+| Bare-IP HTTP | http://158.101.199.190 — kept only so installed APKs keep working |
+| Server path | `/opt/ocl-technician-log` |
+| Service | `ocl-technician-log.service` (Next.js on `127.0.0.1:43127`) |
+| nginx sites | `ocl-plant-log` (domain, TLS), `ocl-technician-log` (bare IP) |
+| Notify config | `/etc/ocl-technician-log.env` (mode 0600) |
 
----
+The bare-IP site is plain HTTP because phones running APK 1.9.0 have that
+address compiled in. **New devices should use the HTTPS domain.** On an
+existing phone, long-press the app title and enter `https://ocl.vishryfarms.com`
+to move it onto HTTPS without reinstalling.
 
-## Setting it up
-
-### Step 1 — Put this code on GitHub
+### Deploy a change
 
 ```bash
-cd ocl-maintenance
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/ocl-maintenance.git
-git push -u origin main
+cd /opt/ocl-technician-log
+git pull origin main
+sudo bash deploy/update.sh
 ```
 
-### Step 2 — Set up the VPS (once)
+The server directory is a git checkout. `data/` is gitignored, so pulling never
+touches live records or photos.
 
-SSH into your server and clone the repo there:
-
-```bash
-ssh root@YOUR-SERVER-IP
-mkdir -p /opt && cd /opt
-git clone https://github.com/YOUR-USERNAME/ocl-maintenance.git
-cd ocl-maintenance
-sudo bash deploy/setup-vps.sh
-```
-
-The script installs Docker, opens the firewall, sets up a free DuckDNS domain
-with automatic HTTPS, and writes your `.env` file. It asks for your DuckDNS
-subdomain and token — get them free at https://www.duckdns.org.
-
-Then start it:
+## Run locally
 
 ```bash
-docker compose up -d --build
-docker compose logs -f api      # watch it start; note the admin password
-```
-
-### Step 3 — Open the admin page
-
-Go to `https://your-name.duckdns.org` and sign in.
-
-From there you can add technician accounts, view and delete records, publish
-checklist updates, and upload new APKs.
-
-### Step 4 — Turn on automatic deploys (optional)
-
-So that `git push` updates the live server, add four secrets in
-**GitHub → your repo → Settings → Secrets and variables → Actions**:
-
-| Secret | Value |
-|---|---|
-| `VPS_HOST` | your server's IP address |
-| `VPS_USER` | `root` (or your sudo user) |
-| `VPS_SSH_KEY` | a **private** SSH key that can log into the server |
-| `VPS_PATH` | `/opt/ocl-maintenance` |
-
-To make the key:
-
-```bash
-# on your own computer
-ssh-keygen -t ed25519 -f ocl-deploy -N ""
-# paste the contents of ocl-deploy.pub into the server:
-ssh root@YOUR-SERVER-IP "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys" < ocl-deploy.pub
-# paste the contents of ocl-deploy (the private one) into the VPS_SSH_KEY secret
-```
-
-After that, pushing to `main` runs the tests and deploys automatically.
-
----
-
-## Pointing the app at your server
-
-Build the APK (`app/README.md`), install it, then:
-
-1. Open the app and sign in with any password to get past the first screen, or
-   submit nothing — the settings panel is reached from the **Done** screen.
-2. Tap **⚙ Server & Google Sheets Setup**.
-3. Enter your server address exactly, e.g. `https://ocl-plant.duckdns.org`
-   (must be **https**).
-4. Tap **Save & sign in**, then sign in with an account created in the admin page.
-
-From then on the app:
-- signs in against your server (no credentials are stored in the APK),
-- pulls the checklist published by the server and caches it for offline use,
-- uploads each submission straight away, or **queues it** and retries
-  automatically when the phone is back in signal,
-- reads past records from the server in the 🗂 Records tab,
-- offers an update when you publish a new APK.
-
-The **Live** indicator in the Records tab shows the server state and how many
-records are waiting to upload.
-
----
-
-## Running the tests
-
-```bash
-cd server && npm test                 # 45 API tests
-node app/test/update-check.js         # 9 app update-channel tests
-node app/test-app.js                  # 130 app behaviour tests (2 skipped, see below)
-node app/verify-app.js                # structural checks on the app bundle
-```
-
-The two skipped tests in `test-app.js` cover the update dialog. They are skipped
-because the harness's timer override runs the page's own start-up update check
-before a test can install a native-version mock — an artefact of the test
-environment, not the app. The same behaviour is covered properly by
-`app/test/update-check.js`, which installs the bridge **before** the page loads,
-exactly as a real phone does.
-
----
-
-## Releasing an app update
-
-1. Build the APK (see `app/README.md`).
-2. In the admin page → **App releases** → upload the APK with a **higher version
-   code** than the one installed on the phones.
-3. Every phone is offered the update next time it opens the app.
-
-The version code must always increase. If it does not, no phone will notice.
-
----
-
-## Running the server locally (for development)
-
-```bash
-cd server
 npm install
-JWT_SECRET="a-development-secret-that-is-at-least-32-chars" npm start
-# → http://localhost:3000
+npm run dev
 ```
 
-The first run creates an admin account and prints its password once.
+Open [http://127.0.0.1:43127](http://127.0.0.1:43127). The first start creates
+`data/` (JSON store + photo uploads) and seeds accounts plus the catalogue.
 
----
-
-## Backups
-
-`deploy/update.sh` copies the database to `backups/` before every deploy and
-keeps the last 14. To take one by hand:
+Production-style:
 
 ```bash
-cd /opt/ocl-maintenance
-sqlite3 data/ocl.db ".backup 'backups/manual-$(date +%F).db'"
+npm run build
+npm start
 ```
 
-To restore, stop the stack, replace `data/ocl.db` with the backup, and start it
-again. Copy backups off the server periodically — a dead disk takes its own
-backups with it.
+## Accounts
 
----
+Accounts are seeded on first boot and each person has a hashed 4-digit submit
+PIN (an admin can set or reset it in **People**).
 
-## Security notes
+The seed usernames and default passwords are in `lib/constants.ts`, and the seed
+PINs in `lib/seed-pins.ts`. **Those defaults are published in this repo, so they
+must be changed before any real deployment.** On the live plant every account
+has been moved off its seed value; confirm with the People page after any fresh
+install.
 
-- Passwords are bcrypt-hashed on the server; no credentials ship inside the APK.
-- Login tokens are signed (JWT) and expire after 30 days.
-- Disabling an account takes effect immediately, including for tokens already
-  issued.
-- All traffic is HTTPS; the certificate renews automatically.
-- Everything security-relevant is written to an audit log, visible in the admin
-  page under **Activity**.
-- The `.env` file holds your `JWT_SECRET`. It is gitignored — never commit it,
-  and back it up somewhere safe.
+- Password: minimum 8 characters.
+- PIN: exactly 4 digits, locked for 15 minutes after 5 wrong attempts.
+- Sessions last 12 hours and survive a restart.
 
----
+## Workflow
 
-## Troubleshooting
+1. Sign in with a personal account.
+2. Pick Monday–Saturday (Additive, Bauxite, Gypsum, LC-8/Tippler, Coal reclaimers, Coal crusher & stacker).
+3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**).
+4. Submit — mandatory **front-camera selfie** (no gallery) then the **4-digit PIN**. The round is archived on the server first, then Discord is notified (selfie included with photos and PDF). The exact submit time is stored and shown on the record, PDF, and Discord full-form message (plant local IST).
+5. Print / save PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos).
+6. Search and reprint history from the cloud archive — last **30 days** of saved records for every signed-in technician and admin.
 
-**The admin page won't load / certificate error**
-DNS may not have propagated yet. Check `dig your-name.duckdns.org`, and give
-Caddy a minute on first start (`docker compose logs caddy`).
+### Admin: add a parameter column
 
-**"JWT_SECRET is missing or too short"**
-Your `.env` is absent or incomplete. Re-run `bash deploy/setup-vps.sh`.
+1. Sign in as admin.
+2. Open **Catalogue** → the weekday (for example Monday – Additive Section).
+3. Open the equipment card.
+4. Under **Parameter columns** tap **Add field**.
+5. Fill the column title, unit, limit, and optional R/Y/B.
+6. Tap **Publish to plant server**. Technicians get the new column on the next load.
 
-**I lost the admin password**
+Existing OCL equipment ids and tags stay unless you expand **Advanced** and
+change them. Reorder with the up/down chevrons. Add OK/FAIL items with
+**Add question**.
+
+## Technician Android APK
+
+Portrait WebView `com.ocl.maintenance` **1.9.0** (versionCode **11**), served at
+`/api/app/ocl-maintenance.apk`. The APK bakes in the plant server URL and does
+not show it in the UI; leftover builder/LAN URLs (`172.30.0.2`, `127.0.0.1`,
+`192.168.x`, port `43127`) are ignored.
+
+Default shift is **General (09:00–18:00)**. Equipment is logged as compact
+interactive cards, photos sit at the end of each machine, and half-filled rounds
+auto-save. The in-app **Update** tab shows **Plant server** version codes only.
+
+If the plant server is down the app shows **Cannot reach plant server** and
+**Retry**. Long-press the title to reveal the server field.
+
+Equipment **Rear camera** opens the in-app Camera2 activity on
+`LENS_FACING_BACK`. **Gallery** is the system image picker with no `capture`
+attribute. The submit selfie uses `LENS_FACING_FRONT` only — no gallery on that
+gate.
+
+> **The `android/` source in this repo is older than the app in the field.**
+> It builds 1.5.0 (versionCode 7); the plant runs 1.9.0 (versionCode 11), whose
+> source is missing. See **[android/README.md](android/README.md)** before
+> building anything, and note that `publishToPlantServer` deliberately refuses
+> to overwrite the live APK with an older build.
+
+### Install on a phone
+
 ```bash
-cd /opt/ocl-maintenance
-docker compose exec api node src/hashpw.js 'NewPassword123'
-# then update it directly:
-docker compose exec api node -e "
-  const {Users}=require('./src/db');const {hashPassword}=require('./src/auth');
-  Users.setPassword(1, hashPassword('NewPassword123'));console.log('done');"
+adb install -r android/dist/ocl-maintenance.apk
 ```
 
-**Deploys are failing**
-Check the Actions tab on GitHub for the failing step, and
-`docker compose logs --tail 50 api` on the server.
+Or open `https://ocl.vishryfarms.com/download` on the phone.
+
+## Notify (Discord)
+
+The webhook lives on the plant server only, never in git or the APK:
+
+```
+DISCORD_WEBHOOK_URL=      # see .env.example
+```
+
+It is read from `/etc/ocl-technician-log.env`, injected by a systemd drop-in.
+A Discord failure does not roll back a saved record.
+
+On submit Discord (same-date forum thread) gets:
+
+1. Full form (same layout as the in-app record, including the exact submit timestamp)
+2. Faults / wrong items only
+3. Photos (including the submit selfie), upright
+4. PDF
+
+## Data and backups
+
+Runtime files live in `data/` (gitignored) — this is the only copy of the plant
+record:
+
+- `catalogue.json` — live checklist, seeded from `lib/seed/all-days-data.json`
+- `users.json` / `sessions.json` — password and PIN hashes at rest
+- `submissions.json`
+- `photos.json` + `uploads/`
+- `discord-threads.json` — date → Discord thread id
+- `releases/ocl-maintenance.apk` — the APK served to phones
+- `releases/version-code.txt` — guard against publishing an older APK
+
+Writes go through a temp file plus atomic rename, so a crash cannot leave a
+half-written JSON file. There is still only one copy: **take backups.** A
+snapshot command and restore steps are in [OPERATIONS.md](OPERATIONS.md).
+
+## Secrets — never commit
+
+| Secret | Where it lives |
+|---|---|
+| Discord webhook | `/etc/ocl-technician-log.env` |
+| Android release keystore | `android/ocl-release.jks` (gitignored) |
+| Keystore passwords | `android/keystore.properties` (gitignored) |
+| JWT/login material | server env only |
+
+The keystore is unrecoverable if lost and dangerous if leaked: it is what lets
+an updated APK install over an installed one. Keep an offline copy.
