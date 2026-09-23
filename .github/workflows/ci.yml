@@ -27,11 +27,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev --no-audit --no-fund
 
+      # Build first. Next.js generates next-env.d.ts and .next/types during a
+      # build, and both are gitignored, so a standalone type check on a fresh
+      # checkout fails on files that have not been generated yet.
+      - name: Build
+        run: npm run build
+
       - name: Type check
         run: npx tsc --noEmit
 
       - name: Lint
         run: npx eslint .
-
-      - name: Build
-        run: npm run build
