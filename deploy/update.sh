@@ -55,10 +55,14 @@ run_as_owner() {
   owner="$(stat -c '%U' "$APP_DIR")"
   owner_home="$(getent passwd "$owner" | cut -d: -f6)"
   [[ -n "$owner_home" ]] || owner_home="/home/$owner"
+  # NODE_ENV is deliberately NOT set here. Forcing NODE_ENV=development to make
+  # npm install devDependencies also leaks into `next build`, and a build run
+  # with a non-standard NODE_ENV makes Turbopack emit broken CSS — it fails with
+  # "Parsing CSS source code failed" on generated selectors that do not exist in
+  # any source file. `--include=dev` on the install is the correct lever.
   sudo -u "$owner" env \
     HOME="$owner_home" \
     PATH="$PATH" \
-    NODE_ENV="${NODE_ENV:-development}" \
     npm_config_cache="$owner_home/.npm" \
     "$@"
 }
@@ -81,7 +85,6 @@ run_as_owner git pull --ff-only origin main
 # them and the build then fails — which is exactly how an earlier deploy of this
 # service ended up running a build it could not reproduce.
 log "Installing dependencies (including dev — the build needs them)"
-export NODE_ENV=development
 INSTALL_OK=1
 if [[ -f package-lock.json ]]; then
   run_as_owner npm ci --include=dev --no-audit --no-fund || INSTALL_OK=0
@@ -136,7 +139,9 @@ restore_previous_build() {
 systemctl stop "$SERVICE" || true
 
 log "Building"
-if ! run_as_owner npm run build; then
+# Pin NODE_ENV=production explicitly: a build under any other value makes
+# Turbopack emit broken CSS (see the note on run_as_owner).
+if ! run_as_owner env NODE_ENV=production npm run build; then
   restore_previous_build "Build failed"
 fi
 
