@@ -48,6 +48,9 @@ next-env.d.ts
 /android/.gradle/
 /android/build/
 /android/app/build/
+# Build output. The authoritative APK is the frozen one in android/shipped/;
+# this directory is whatever the last local build happened to produce.
+/android/dist/
 /android/local.properties
 /android/.idea/
 *.iml
