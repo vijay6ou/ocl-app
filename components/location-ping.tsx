@@ -1,104 +1,117 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
-import { msUntilNextPlantSlot } from "@/lib/submit-time";
+import { msUntilNextPlantSlot, plantSlotKey } from "@/lib/submit-time";
 import { isOclNative } from "@/lib/print-native";
 
-function postFix(coords: GeolocationCoordinates) {
-  return api("/api/location", {
+function postFix(lat: number, lng: number, accuracy?: number) {
+  return api<{ ok?: boolean; slot?: string }>("/api/location", {
     method: "POST",
-    body: JSON.stringify({
-      lat: coords.latitude,
-      lng: coords.longitude,
-      accuracy: coords.accuracy,
-    }),
+    body: JSON.stringify({ lat, lng, accuracy }),
   }).catch(() => undefined);
 }
 
+function nativeHasPermission() {
+  try {
+    return Boolean(window.OCLNative?.hasLocationPermission?.());
+  } catch {
+    return false;
+  }
+}
+
+function nativeCoords(): { lat: number; lng: number; accuracy?: number } | null {
+  try {
+    const raw = window.OCLNative?.getLocation?.();
+    if (!raw) return null;
+    const loc = JSON.parse(raw) as { lat?: unknown; lng?: unknown; accuracy?: unknown };
+    const lat = Number(loc.lat);
+    const lng = Number(loc.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const accuracy = loc.accuracy == null ? undefined : Number(loc.accuracy);
+    return { lat, lng, accuracy: Number.isFinite(accuracy) ? accuracy : undefined };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 15-minute location check-ins. The Android WebView origin is HTTP, so
+ * navigator.geolocation often reports denied even when ACCESS_FINE_LOCATION
+ * is granted. Native LocationManager is the source of truth in the APK.
+ * Never show a permission banner — the OS dialog is enough.
+ */
 export function LocationPing() {
   const { user } = useAuth();
-  const [denied, setDenied] = useState(false);
-  const watchRef = useRef<number | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const lastCoords = useRef<GeolocationCoordinates | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    if (typeof window === "undefined" || !navigator.geolocation) return;
 
-    try {
-      window.OCLNative?.requestLocationPermission?.();
-    } catch {
-      /* native optional */
+    if (isOclNative()) {
+      try {
+        window.OCLNative?.requestLocationPermission?.();
+      } catch {
+        /* optional */
+      }
     }
 
-    function send(coords: GeolocationCoordinates) {
-      lastCoords.current = coords;
-      void postFix(coords);
-    }
-
-    function schedule() {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => {
-        const cached = lastCoords.current;
-        if (cached) void postFix(cached);
-        else {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => send(pos.coords),
-            () => setDenied(true),
-            { enableHighAccuracy: true, timeout: 20000, maximumAge: 120000 }
-          );
+    let lastSlot = "";
+    function sendOnce() {
+      const slot = plantSlotKey();
+      if (lastSlot === slot) return;
+      if (isOclNative() && nativeHasPermission()) {
+        const loc = nativeCoords();
+        if (loc) {
+          void postFix(loc.lat, loc.lng, loc.accuracy).then((res) => {
+            if (res?.ok) lastSlot = res.slot || slot;
+          });
+          return;
         }
+        try {
+          window.OCLNative?.pingLocationNow?.();
+          lastSlot = slot;
+        } catch {
+          /* wait for a GPS fix */
+        }
+        return;
+      }
+      if (typeof navigator === "undefined" || !navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          void postFix(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy).then(
+            (res) => {
+              if (res?.ok) lastSlot = res.slot || slot;
+            }
+          );
+        },
+        () => undefined,
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 120000 }
+      );
+    }
+
+    sendOnce();
+    let timer: number | null = null;
+    function schedule() {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        sendOnce();
         schedule();
       }, msUntilNextPlantSlot() + 400);
     }
+    schedule();
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setDenied(false);
-        send(pos.coords);
-        schedule();
-      },
-      () => {
-        setDenied(true);
-      },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-    );
-
-    watchRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        setDenied(false);
-        lastCoords.current = pos.coords;
-      },
-      () => undefined,
-      { enableHighAccuracy: true, maximumAge: 60_000 }
-    );
+    const poll = isOclNative()
+      ? window.setInterval(() => {
+          if (nativeHasPermission()) sendOnce();
+        }, 15_000)
+      : null;
 
     return () => {
-      if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current);
-      if (timerRef.current) window.clearTimeout(timerRef.current);
+      if (timer) window.clearTimeout(timer);
+      if (poll) window.clearInterval(poll);
     };
   }, [user]);
 
-  if (!user || !denied) return null;
-  return (
-    <div className="print:hidden border-b bg-amber-50 px-4 py-2 text-center text-xs text-amber-950">
-      Plant check-in needs location permission. Enable it in the browser or app settings.
-      {isOclNative() ? " The app will keep sending while it stays open." : ""}
-      <button
-        type="button"
-        className="ml-2 font-semibold underline"
-        onClick={() => {
-          navigator.geolocation.getCurrentPosition(
-            () => setDenied(false),
-            () => setDenied(true)
-          );
-        }}
-      >
-        Try again
-      </button>
-    </div>
-  );
+  return null;
 }

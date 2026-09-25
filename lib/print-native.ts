@@ -10,6 +10,8 @@ export type OclNative = {
   takeLastCapture?: () => string | null;
   requestLocationPermission?: () => void;
   hasLocationPermission?: () => boolean;
+  getLocation?: () => string;
+  pingLocationNow?: () => void;
 };
 
 declare global {

@@ -193,6 +193,17 @@ export type LocationPing = {
   satelliteAttached: boolean;
 };
 
+export type PresenceSession = {
+  id: string;
+  userId: string;
+  username: string;
+  name: string;
+  role: Role;
+  startedAt: string;
+  lastSeenAt: string;
+  endedAt?: string;
+};
+
 export type DraftState = {
   day: DayKey;
   savedAt: string;

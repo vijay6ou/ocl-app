@@ -131,7 +131,7 @@ error. Discord failure never rolls back a saved record.
 server**. Technicians pick it up on next load.
 
 **The APK must be rebuilt.**
-Plant app is **1.11.0** (versionCode 13). Build with `./gradlew :app:publishToPlantServer`
+Plant app is **1.12.0** (versionCode 14). Build with `./gradlew :app:publishToPlantServer`
 from `android/` after installing SDK 34.
 
 **Location check-ins.**
@@ -139,7 +139,13 @@ Technicians (and any signed-in session) post lat/lng every 15 minutes to
 `LOCATION_DISCORD_WEBHOOK_URL` in `/etc/ocl-technician-log.env`. The server
 fetches a free **Esri World Imagery** JPEG (ArcGIS MapServer export, no key)
 and attaches it when the fetch works. Coordinates are always included. Do not
-set `GOOGLE_MAPS_STATIC_KEY`.
+set `GOOGLE_MAPS_STATIC_KEY`. The Android shell uses LocationManager when the
+OS permission is granted. WebView `navigator.geolocation` is not used to
+decide a permission banner (that banner is removed).
+
+**Admin presence.**
+**Presence** in the admin menu lists who is on the app now, sign-in / last
+seen, and time spent today. Heartbeats run while the app stays open.
 
 **Admin storage.**
 **Storage** in the admin menu shows disk used under `data/` and can delete

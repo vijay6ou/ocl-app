@@ -13,6 +13,7 @@ import type {
   DraftState,
   LocationPing,
   PhotoMeta,
+  PresenceSession,
   PublicUser,
   SessionRecord,
   Submission,
@@ -32,6 +33,7 @@ const DRAFTS_FILE = path.join(DATA_DIR, "drafts.json");
 const DISCORD_THREADS_FILE = path.join(DATA_DIR, "discord-threads.json");
 const LOCATION_DISCORD_THREADS_FILE = path.join(DATA_DIR, "location-discord-threads.json");
 const LOCATIONS_FILE = path.join(DATA_DIR, "locations.json");
+const PRESENCE_FILE = path.join(DATA_DIR, "presence.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -152,6 +154,12 @@ async function seedIfNeeded() {
     .then(() => true)
     .catch(() => false);
   if (!locationsExist) await writeJson(LOCATIONS_FILE, []);
+
+  const presenceExist = await fs
+    .access(PRESENCE_FILE)
+    .then(() => true)
+    .catch(() => false);
+  if (!presenceExist) await writeJson(PRESENCE_FILE, []);
 
   await migrateUserPins();
 }
@@ -581,6 +589,71 @@ export async function saveLocationPing(ping: LocationPing) {
     all.unshift(ping);
     await writeJson(LOCATIONS_FILE, all.slice(0, MAX_LOCATION_PINGS));
     return ping;
+  });
+}
+
+const MAX_PRESENCE = 4000;
+const PRESENCE_GAP_MS = 3 * 60 * 1000;
+
+export async function heartbeatPresence(user: PublicUser): Promise<PresenceSession> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<PresenceSession[]>(PRESENCE_FILE, []);
+    const nowIso = new Date().toISOString();
+    const now = Date.now();
+    const openIdx = all.findIndex((s) => s.userId === user.id && !s.endedAt);
+    if (openIdx >= 0) {
+      const open = all[openIdx];
+      const last = Date.parse(open.lastSeenAt);
+      if (Number.isFinite(last) && now - last > PRESENCE_GAP_MS) {
+        all[openIdx] = { ...open, endedAt: open.lastSeenAt };
+      } else {
+        const next = {
+          ...open,
+          lastSeenAt: nowIso,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+        };
+        all[openIdx] = next;
+        await writeJson(PRESENCE_FILE, all);
+        return next;
+      }
+    }
+    const created: PresenceSession = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      username: user.username,
+      name: user.name,
+      role: user.role,
+      startedAt: nowIso,
+      lastSeenAt: nowIso,
+    };
+    all.unshift(created);
+    await writeJson(PRESENCE_FILE, all.slice(0, MAX_PRESENCE));
+    return created;
+  });
+}
+
+export async function endPresence(userId: string) {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<PresenceSession[]>(PRESENCE_FILE, []);
+    const nowIso = new Date().toISOString();
+    let changed = false;
+    const next = all.map((session) => {
+      if (session.userId !== userId || session.endedAt) return session;
+      changed = true;
+      return { ...session, lastSeenAt: nowIso, endedAt: nowIso };
+    });
+    if (changed) await writeJson(PRESENCE_FILE, next);
+  });
+}
+
+export async function listPresenceSessions() {
+  return withLock(async () => {
+    await seedIfNeeded();
+    return readJson<PresenceSession[]>(PRESENCE_FILE, []);
   });
 }
 

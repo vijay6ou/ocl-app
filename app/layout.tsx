@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { AppHeader } from "@/components/app-header";
 import { NativeShell } from "@/components/native-shell";
 import { LocationPing } from "@/components/location-ping";
+import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
 
@@ -46,6 +47,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <AppHeader initialUser={user} />
             <NativeShell />
             <LocationPing />
+            <PresenceHeartbeat />
             {children}
             <Toaster />
           </AuthProvider>

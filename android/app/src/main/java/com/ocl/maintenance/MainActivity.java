@@ -580,7 +580,8 @@ public class MainActivity extends Activity {
         public void onGeolocationPermissionsShowPrompt(
                 String origin, GeolocationPermissions.Callback callback) {
             if (locationHelper != null) locationHelper.ensurePermission();
-            callback.invoke(origin, true, false);
+            boolean allow = locationHelper != null && locationHelper.hasPermission();
+            callback.invoke(origin, allow, false);
         }
 
         @Override
@@ -721,6 +722,19 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean hasLocationPermission() {
             return locationHelper != null && locationHelper.hasPermission();
+        }
+
+        @JavascriptInterface
+        public String getLocation() {
+            if (locationHelper == null || !locationHelper.hasPermission()) return "";
+            return locationHelper.lastLocationJson();
+        }
+
+        @JavascriptInterface
+        public void pingLocationNow() {
+            runOnUiThread(() -> {
+                if (locationHelper != null) locationHelper.pingNow();
+            });
         }
 
         @JavascriptInterface

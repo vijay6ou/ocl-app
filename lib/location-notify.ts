@@ -3,7 +3,7 @@ import { getLocationDiscordThread, saveLocationDiscordThread } from "@/lib/store
 import { plantSlotKey, PLANT_TIME_ZONE_LABEL } from "@/lib/submit-time";
 import type { LocationPing, PublicUser } from "@/lib/types";
 
-const APP_UA = "OCLMaintenance/1.11.0";
+const APP_UA = "OCLMaintenance/1.12.0";
 
 /** Esri ArcGIS Online World Imagery MapServer (no API key). */
 const ESRI_WORLD_IMAGERY_EXPORT =

@@ -4,9 +4,11 @@ import { SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/constants";
 import {
   createSession,
   deleteSession,
+  endPresence,
   findUserById,
   findUserByUsername,
   getSession,
+  heartbeatPresence,
   publicUser,
 } from "@/lib/store";
 import type { PublicUser, Role } from "@/lib/types";
@@ -30,6 +32,8 @@ export async function loginWithPassword(username: string, password: string) {
     throw new HttpError(401, "Username or password is not recognised.");
   }
   const session = await createSession(user.id);
+  const exposed = publicUser(user);
+  await heartbeatPresence(exposed);
   const jar = await cookies();
   jar.set(SESSION_COOKIE, session.token, {
     httpOnly: true,
@@ -37,13 +41,17 @@ export async function loginWithPassword(username: string, password: string) {
     path: "/",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
-  return publicUser(user);
+  return exposed;
 }
 
 export async function logoutCurrent() {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (token) await deleteSession(token);
+  if (token) {
+    const session = await getSession(token);
+    if (session) await endPresence(session.userId);
+    await deleteSession(token);
+  }
   jar.delete(SESSION_COOKIE);
 }
 

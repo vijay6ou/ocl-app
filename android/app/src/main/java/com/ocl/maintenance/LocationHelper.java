@@ -33,6 +33,7 @@ public class LocationHelper {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable tick = this::onSlot;
     private boolean started;
+    private Location lastFix;
 
     LocationHelper(MainActivity activity) {
         this.activity = activity;
@@ -97,7 +98,10 @@ public class LocationHelper {
         } catch (SecurityException ignored) {
             return;
         }
-        if (best != null) post(best);
+        if (best != null) {
+            lastFix = best;
+            post(best);
+        }
         try {
             String provider = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
                     ? LocationManager.GPS_PROVIDER
@@ -131,7 +135,36 @@ public class LocationHelper {
         return a.getTime() >= b.getTime() ? a : b;
     }
 
+    String lastLocationJson() {
+        Location loc = lastFix;
+        if (loc == null && hasPermission()) {
+            LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
+            if (lm != null) {
+                try {
+                    loc = newer(
+                            lm.getLastKnownLocation(LocationManager.GPS_PROVIDER),
+                            lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                    );
+                } catch (SecurityException ignored) {
+                    loc = null;
+                }
+            }
+            if (loc != null) lastFix = loc;
+        }
+        if (loc == null) return "";
+        try {
+            JSONObject body = new JSONObject();
+            body.put("lat", loc.getLatitude());
+            body.put("lng", loc.getLongitude());
+            if (loc.hasAccuracy()) body.put("accuracy", loc.getAccuracy());
+            return body.toString();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     private void post(final Location location) {
+        lastFix = location;
         final String origin = activity.getServerUrl();
         if (origin == null || origin.isEmpty()) return;
         new Thread(() -> {
