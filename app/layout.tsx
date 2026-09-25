@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth-provider";
 import { AppHeader } from "@/components/app-header";
 import { NativeShell } from "@/components/native-shell";
+import { LocationPing } from "@/components/location-ping";
 import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <AuthProvider initialUser={user}>
             <AppHeader initialUser={user} />
             <NativeShell />
+            <LocationPing />
             {children}
             <Toaster />
           </AuthProvider>

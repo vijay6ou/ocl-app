@@ -1,9 +1,9 @@
 export const ANDROID_APP = {
   packageId: "com.ocl.maintenance",
   displayName: "Adani Cements",
-  versionName: "1.9.0",
-  versionCode: 11,
+  versionName: "1.10.0",
+  versionCode: 12,
   apkFileName: "ocl-maintenance.apk",
   notes:
-    "Chevron expands only the tapped card. Gallery opens the system image picker (not the rear camera). Upright PDF, compact cards, submit timestamp, last-30-day records. Update tab shows Plant server version codes only.",
+    "Add equipment/field at the top of the catalogue. Technician location every 15 minutes. Admin storage and date-range delete. Chevron-only cards, gallery picker, upright PDF, last-30-day records.",
 } as const;

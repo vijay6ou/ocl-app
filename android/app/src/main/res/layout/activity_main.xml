@@ -36,7 +36,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="36dp"
-                android:text="ORIENT CEMENT LIMITED"
+                android:text="ADANI CEMENTS"
                 android:textColor="@color/ocl_gold"
                 android:textSize="13sp"
                 android:letterSpacing="0.08"

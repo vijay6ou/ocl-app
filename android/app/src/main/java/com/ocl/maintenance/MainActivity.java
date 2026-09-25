@@ -7,15 +7,18 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Parcelable;
-import android.provider.MediaStore;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -32,7 +35,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -48,6 +54,8 @@ public class MainActivity extends Activity {
 
     private static final int REQ_FILE = 4101;
     private static final int REQ_CAMERA = 4102;
+    private static final int REQ_NATIVE_CAPTURE = 4103;
+    private static final int REQ_GALLERY = 4104;
     private static final int PROBE_MS = 2500;
     private static final int LOAD_WATCHDOG_MS = 4000;
 
@@ -60,6 +68,7 @@ public class MainActivity extends Activity {
     private TextView serverTitle;
     private SharedPreferences prefs;
     private UpdateHelper updateHelper;
+    private LocationHelper locationHelper;
     private LocalStore localStore;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable loadWatchdog;
@@ -68,6 +77,8 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> filePathCallback;
     private Uri cameraUri;
     private WebView printWebView;
+    private String pendingFacing = "environment";
+    private String lastCaptureDataUrl;
 
     @Override
     @SuppressLint("SetJavaScriptEnabled")
@@ -101,6 +112,8 @@ public class MainActivity extends Activity {
 
         configureWebView();
         updateHelper = new UpdateHelper(this);
+        locationHelper = new LocationHelper(this);
+        locationHelper.start();
         launchWithoutHanging();
     }
 
@@ -275,6 +288,8 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccessFromFileURLs(true);
         settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setGeolocationEnabled(true);
+        settings.setGeolocationDatabasePath(getFilesDir().getPath());
         settings.setUserAgentString(
                 settings.getUserAgentString() + " OCLMaintenance/" + BuildConfig.VERSION_NAME);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -306,54 +321,103 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void openFileChooser(ValueCallback<Uri[]> callback) {
+    private void openFileChooser(ValueCallback<Uri[]> callback, boolean capture) {
         if (filePathCallback != null) {
             filePathCallback.onReceiveValue(null);
         }
         filePathCallback = callback;
+        // File inputs are gallery only. Rear/front camera is OCLNative.capturePhoto.
+        startGalleryPick();
+    }
 
+    private void startGalleryPick() {
+        Intent pick = new Intent(Intent.ACTION_PICK);
+        pick.setDataAndType(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
+        pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
+        fallback.addCategory(Intent.CATEGORY_OPENABLE);
+        fallback.setType("image/*");
+        fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        Intent chooser = Intent.createChooser(pick, getString(R.string.pick_gallery));
+        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{fallback});
+        startActivityForResult(chooser, REQ_GALLERY);
+    }
+
+    private void startNativeCapture(String facing) {
+        pendingFacing = "user".equalsIgnoreCase(facing) ? "user" : "environment";
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQ_CAMERA);
             return;
         }
-        launchChooser();
+        Intent capture = new Intent(this, CameraCaptureActivity.class);
+        boolean front = "user".equals(pendingFacing);
+        capture.putExtra(CameraCaptureActivity.EXTRA_FACING, pendingFacing);
+        // Stock camera apps ignore these extras; CameraCaptureActivity does not.
+        // Keep them on the intent so any chooser fallback still asks for the right lens.
+        capture.putExtra("android.intent.extras.CAMERA_FACING", front ? 1 : 0);
+        capture.putExtra("android.intent.extras.LENS_FACING_FRONT", front ? 1 : 0);
+        capture.putExtra("android.intent.extra.USE_FRONT_CAMERA", front);
+        capture.putExtra("android.intent.extras.LENS_FACING_BACK", front ? 0 : 1);
+        capture.putExtra("camerafacing", front ? "front" : "back");
+        capture.putExtra("facing", pendingFacing);
+        startActivityForResult(capture, REQ_NATIVE_CAPTURE);
     }
 
     private void launchChooser() {
-        Intent gallery = new Intent(Intent.ACTION_GET_CONTENT);
-        gallery.addCategory(Intent.CATEGORY_OPENABLE);
-        gallery.setType("image/*");
-
-        Intent capture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        File dir = new File(getCacheDir(), "camera");
-        if (!dir.exists() && !dir.mkdirs()) {
-            Toast.makeText(this, "Cannot open camera cache", Toast.LENGTH_SHORT).show();
-        }
-        File photo = new File(dir, "capture.jpg");
-        cameraUri = FileProvider.getUriForFile(this, FILE_PROVIDER, photo);
-        capture.putExtra(MediaStore.EXTRA_OUTPUT, cameraUri);
-        capture.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        capture.putExtra("android.intent.extras.CAMERA_FACING", 0);
-        capture.putExtra("android.intent.extras.LENS_FACING_FRONT", 0);
-        capture.putExtra("android.intent.extra.USE_FRONT_CAMERA", false);
-
-        Intent chooser = Intent.createChooser(gallery, getString(R.string.photo_chooser));
-        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Parcelable[]{capture});
-        startActivityForResult(chooser, REQ_FILE);
+        startGalleryPick();
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_CAMERA) {
-            launchChooser();
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startNativeCapture(pendingFacing);
+            } else {
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(null);
+                    filePathCallback = null;
+                }
+                notifyCaptureReady();
+            }
+        }
+        if (requestCode == LocationHelper.REQ_LOCATION && locationHelper != null) {
+            locationHelper.onPermissionResult();
         }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_NATIVE_CAPTURE || requestCode == REQ_GALLERY) {
+            lastCaptureDataUrl = null;
+            cameraUri = null;
+            if (resultCode == RESULT_OK) {
+                if (requestCode == REQ_GALLERY && data != null && data.getData() != null) {
+                    cameraUri = data.getData();
+                    lastCaptureDataUrl = uriToJpegDataUrl(cameraUri);
+                } else if (data != null) {
+                    String path = data.getStringExtra(CameraCaptureActivity.EXTRA_PATH);
+                    if (path != null) {
+                        File file = new File(path);
+                        if (file.exists()) {
+                            lastCaptureDataUrl = "data:image/jpeg;base64," + readFileBase64(file);
+                            cameraUri = FileProvider.getUriForFile(this, FILE_PROVIDER, file);
+                        }
+                    }
+                }
+            }
+            if (filePathCallback != null) {
+                Uri[] result = (resultCode == RESULT_OK && cameraUri != null)
+                        ? new Uri[]{cameraUri}
+                        : null;
+                filePathCallback.onReceiveValue(result);
+                filePathCallback = null;
+            }
+            notifyCaptureReady();
+            return;
+        }
         if (requestCode != REQ_FILE || filePathCallback == null) {
             return;
         }
@@ -367,6 +431,76 @@ public class MainActivity extends Activity {
         }
         filePathCallback.onReceiveValue(result);
         filePathCallback = null;
+    }
+
+    private void notifyCaptureReady() {
+        webView.post(() -> webView.evaluateJavascript(
+                "window.__oclOnCaptureReady && window.__oclOnCaptureReady()",
+                null
+        ));
+    }
+
+    private static String readFileBase64(File file) {
+        try {
+            java.io.FileInputStream in = new java.io.FileInputStream(file);
+            byte[] buf = new byte[(int) file.length()];
+            int off = 0;
+            while (off < buf.length) {
+                int n = in.read(buf, off, buf.length - off);
+                if (n < 0) break;
+                off += n;
+            }
+            in.close();
+            return android.util.Base64.encodeToString(buf, android.util.Base64.NO_WRAP);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String uriToJpegDataUrl(Uri uri) {
+        File tmp = new File(new File(getCacheDir(), "camera"), "gallery-pick.jpg");
+        File parent = tmp.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
+        try (InputStream in = getContentResolver().openInputStream(uri);
+             FileOutputStream fos = new FileOutputStream(tmp)) {
+            if (in == null) return null;
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) >= 0) fos.write(buf, 0, n);
+        } catch (Exception e) {
+            return null;
+        }
+        Bitmap bmp = BitmapFactory.decodeFile(tmp.getAbsolutePath());
+        if (bmp == null) return null;
+        int rotation = 0;
+        try {
+            ExifInterface exif = new ExifInterface(tmp.getAbsolutePath());
+            int o = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            if (o == ExifInterface.ORIENTATION_ROTATE_90) rotation = 90;
+            else if (o == ExifInterface.ORIENTATION_ROTATE_180) rotation = 180;
+            else if (o == ExifInterface.ORIENTATION_ROTATE_270) rotation = 270;
+        } catch (Exception ignored) {
+        }
+        if (rotation != 0) {
+            Matrix matrix = new Matrix();
+            matrix.postRotate(rotation);
+            Bitmap rotated = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+            if (rotated != bmp) bmp.recycle();
+            bmp = rotated;
+        }
+        int w = bmp.getWidth();
+        int h = bmp.getHeight();
+        int max = Math.max(w, h);
+        if (max > 1600) {
+            float scale = 1600f / max;
+            Bitmap scaled = Bitmap.createScaledBitmap(bmp, Math.round(w * scale), Math.round(h * scale), true);
+            if (scaled != bmp) bmp.recycle();
+            bmp = scaled;
+        }
+        ByteArrayOutputStream jpeg = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.JPEG, 86, jpeg);
+        bmp.recycle();
+        return "data:image/jpeg;base64," + android.util.Base64.encodeToString(jpeg.toByteArray(), android.util.Base64.NO_WRAP);
     }
 
     @Override
@@ -385,6 +519,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         cancelWatchdog();
+        if (locationHelper != null) locationHelper.stop();
         if (webView != null) {
             webView.loadUrl("about:blank");
             webView.destroy();
@@ -436,8 +571,21 @@ public class MainActivity extends Activity {
                 WebView webView,
                 ValueCallback<Uri[]> filePathCallback,
                 FileChooserParams fileChooserParams) {
-            openFileChooser(filePathCallback);
+            // Never route a file input to the camera. capture= on <input> is ignored here.
+            openFileChooser(filePathCallback, false);
             return true;
+        }
+
+        @Override
+        public void onGeolocationPermissionsShowPrompt(
+                String origin, GeolocationPermissions.Callback callback) {
+            if (locationHelper != null) locationHelper.ensurePermission();
+            callback.invoke(origin, true, false);
+        }
+
+        @Override
+        public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+            runOnUiThread(() -> request.grant(request.getResources()));
         }
 
         @Override
@@ -471,7 +619,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void printHtml(String html, String jobName) {
             String name = (jobName == null || jobName.trim().isEmpty())
-                    ? "OCL Maintenance Report"
+                    ? "Adani Cements Maintenance Report"
                     : jobName;
             MainActivity.this.printHtml(html, name);
         }
@@ -539,6 +687,40 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean deleteFile(String name) {
             return localStore.delete(name);
+        }
+
+        @JavascriptInterface
+        public void capturePhoto(String facing) {
+            final String lens = "user".equalsIgnoreCase(facing) ? "user" : "environment";
+            runOnUiThread(() -> {
+                lastCaptureDataUrl = null;
+                startNativeCapture(lens);
+            });
+        }
+
+        @JavascriptInterface
+        public void pickGallery() {
+            runOnUiThread(() -> {
+                lastCaptureDataUrl = null;
+                startGalleryPick();
+            });
+        }
+
+        @JavascriptInterface
+        public String takeLastCapture() {
+            return lastCaptureDataUrl;
+        }
+
+        @JavascriptInterface
+        public void requestLocationPermission() {
+            runOnUiThread(() -> {
+                if (locationHelper != null) locationHelper.ensurePermission();
+            });
+        }
+
+        @JavascriptInterface
+        public boolean hasLocationPermission() {
+            return locationHelper != null && locationHelper.hasPermission();
         }
 
         @JavascriptInterface

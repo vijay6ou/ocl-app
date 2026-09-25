@@ -201,7 +201,7 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
     );
   }
 
-  function addEquipment() {
+  function addEquipment(at: "start" | "end" = "end") {
     setSection((prev) => {
       if (!prev) return prev;
       const used = new Set(prev.equip.map((e) => e.id));
@@ -215,7 +215,10 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
         runningChecks: [],
         stoppedChecks: [],
       };
-      return { ...prev, equip: [...prev.equip, next] };
+      return {
+        ...prev,
+        equip: at === "start" ? [next, ...prev.equip] : [...prev.equip, next],
+      };
     });
   }
 
@@ -280,11 +283,19 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-heading text-lg font-semibold">Equipment questions</h2>
-        <Button variant="outline" onClick={addEquipment}>
+        <Button
+          variant="outline"
+          data-add="equip-top"
+          onClick={() => addEquipment("start")}
+        >
           <Plus className="size-4" />
           Add equipment
         </Button>
       </div>
+      <p className="text-xs text-muted-foreground">
+        The button above inserts at the top of this list. The dashed control at the bottom
+        appends.
+      </p>
 
       {section.equip.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center">
@@ -292,7 +303,7 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
           <p className="mt-1 text-sm text-muted-foreground">
             Add the first machine, then attach parameter fields and OK/FAIL questions.
           </p>
-          <Button className="mt-4" onClick={addEquipment}>
+          <Button className="mt-4" onClick={() => addEquipment("start")}>
             <Plus className="size-4" />
             Add equipment
           </Button>
@@ -317,7 +328,7 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
 
       <button
         type="button"
-        onClick={addEquipment}
+        onClick={() => addEquipment("end")}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#d4a017]/70 bg-white px-4 py-3 text-sm font-medium text-[#0d2137] hover:bg-[#d4a017]/10"
       >
         <Plus className="size-4" />
@@ -386,14 +397,19 @@ function EquipmentEditor({
   onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
 }) {
-  function addParam() {
+  function addParam(at: "start" | "end" = "end") {
     const used = new Set(item.runningParams.map((p) => p.id));
     const id = newParamId("new_reading", used);
+    const field: RunningParam = {
+      id,
+      label: "New reading",
+      unit: "",
+      phases: false,
+      limit: "",
+    };
     onChange({
-      runningParams: [
-        ...item.runningParams,
-        { id, label: "New reading", unit: "", phases: false, limit: "" },
-      ],
+      runningParams:
+        at === "start" ? [field, ...item.runningParams] : [...item.runningParams, field],
     });
   }
 
@@ -469,7 +485,12 @@ function EquipmentEditor({
                     Readings shown when the machine is RUNNING (current, voltage, temperature).
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={addParam}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-add="field-top"
+                  onClick={() => addParam("start")}
+                >
                   <Plus className="size-3.5" />
                   Add field
                 </Button>
@@ -477,7 +498,7 @@ function EquipmentEditor({
               {item.runningParams.length === 0 ? (
                 <button
                   type="button"
-                  onClick={addParam}
+                  onClick={() => addParam("start")}
                   className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-6 text-sm text-muted-foreground hover:bg-muted/40"
                 >
                   <Plus className="size-4" />
@@ -506,7 +527,7 @@ function EquipmentEditor({
                       }
                     />
                   ))}
-                  <Button variant="ghost" size="sm" onClick={addParam}>
+                  <Button variant="ghost" size="sm" onClick={() => addParam("end")}>
                     <Plus className="size-3.5" />
                     Add field
                   </Button>

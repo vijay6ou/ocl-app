@@ -178,6 +178,21 @@ export type Submission = {
   selfie?: PhotoRef;
 };
 
+export type LocationPing = {
+  id: string;
+  userId: string;
+  username: string;
+  name: string;
+  role: Role;
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  slot: string;
+  recordedAt: string;
+  mapUrl: string;
+  satelliteAttached: boolean;
+};
+
 export type DraftState = {
   day: DayKey;
   savedAt: string;

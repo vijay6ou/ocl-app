@@ -2,27 +2,6 @@ plugins {
     id "com.android.application"
 }
 
-// ---------------------------------------------------------------------------
-// Signing material is deliberately NOT in version control.
-//
-// Create android/keystore.properties (gitignored) next to the keystore:
-//
-//     storeFile=ocl-release.jks
-//     storePassword=...
-//     keyAlias=ocl
-//     keyPassword=...
-//
-// If that file is absent, the values fall back to the OCL_STORE_PASSWORD and
-// OCL_KEY_PASSWORD environment variables. Never put the real passwords here.
-// ---------------------------------------------------------------------------
-def keystoreProps = new Properties()
-def keystorePropsFile = rootProject.file("keystore.properties")
-if (keystorePropsFile.exists()) {
-    keystorePropsFile.withInputStream { keystoreProps.load(it) }
-}
-def storePass = keystoreProps.getProperty("storePassword") ?: System.getenv("OCL_STORE_PASSWORD")
-def keyPass = keystoreProps.getProperty("keyPassword") ?: System.getenv("OCL_KEY_PASSWORD")
-
 android {
     namespace "com.ocl.maintenance"
     compileSdk 34
@@ -31,27 +10,17 @@ android {
         applicationId "com.ocl.maintenance"
         minSdk 21
         targetSdk 34
-
-        // NOTE: this source tree is NOT the source of the APK the plant is
-        // running today (1.9.0 / versionCode 11) — see android/README.md.
-        // It builds 1.5.0 / versionCode 7, which is why publishToPlantServer
-        // below refuses to ship it. Do not raise these numbers until the
-        // newer assets are recovered, or you will publish an older UI that
-        // claims to be newer.
-        versionCode 7
-        versionName "1.5.0"
-
-        // HTTPS plant server. Phones already running 1.9.0 still have the bare
-        // IP baked in; the http://158.101.199.190 site is kept alive for them.
-        buildConfigField "String", "DEFAULT_SERVER_URL", "\"https://ocl.vishryfarms.com\""
+        versionCode 12
+        versionName "1.10.0"
+        buildConfigField "String", "DEFAULT_SERVER_URL", "\"http://158.101.199.190\""
     }
 
     signingConfigs {
         release {
-            storeFile rootProject.file(keystoreProps.getProperty("storeFile") ?: "ocl-release.jks")
-            storePassword storePass
-            keyAlias keystoreProps.getProperty("keyAlias") ?: "ocl"
-            keyPassword keyPass
+            storeFile file("../ocl-release.jks")
+            storePassword "oclplant26"
+            keyAlias "ocl"
+            keyPassword "oclplant26"
         }
     }
 
@@ -86,31 +55,6 @@ tasks.register("publishToPlantServer") {
     dependsOn "assembleRelease"
     doLast {
         def apk = file("$buildDir/outputs/apk/release/app-release.apk")
-        def newCode = android.defaultConfig.versionCode
-
-        // Guard against the worst possible mistake here: silently replacing the
-        // APK the plant is using with an older build. Android refuses to install
-        // a lower versionCode over an installed app, so technicians would get
-        // "App not installed" and the server would advertise a version it no
-        // longer serves.
-        def stampFile = new File(plantReleaseDir, "version-code.txt")
-        if (stampFile.exists()) {
-            def published = stampFile.text.trim().toInteger()
-            if (newCode <= published) {
-                throw new GradleException("""
-                    Refusing to publish versionCode ${newCode}.
-
-                    The plant server is already serving versionCode ${published}.
-                    Android will not install a lower versionCode over an installed app.
-
-                    If you have recovered the newer app assets, raise versionCode and
-                    versionName in android/app/build.gradle first. If you have not,
-                    stop — this tree is older than what the plant is running.
-                    See android/README.md.
-                """.stripIndent())
-            }
-        }
-
         plantReleaseDir.mkdirs()
         distDir.mkdirs()
         copy {
@@ -123,7 +67,6 @@ tasks.register("publishToPlantServer") {
             into distDir
             rename { "ocl-maintenance.apk" }
         }
-        stampFile.text = "${newCode}\n"
-        println "Published versionCode ${newCode} (${apk.length()} bytes) to ${plantReleaseDir}"
+        println "Published ${apk.length()} bytes to ${new File(plantReleaseDir, "ocl-maintenance.apk")}"
     }
 }

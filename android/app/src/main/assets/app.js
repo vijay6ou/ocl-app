@@ -564,7 +564,24 @@
     file.accept = "image/*";
     file.setAttribute("capture", "environment");
     file.className = "hidden-file";
-    btn.onclick = () => file.click();
+    btn.onclick = () => {
+      if (native && native.capturePhoto) {
+        window.__oclOnCaptureReady = function () {
+          window.__oclOnCaptureReady = undefined;
+          const dataUrl = native.takeLastCapture && native.takeLastCapture();
+          if (!dataUrl) return;
+          const id = newPhotoId();
+          if (writePhotoFile(id, dataUrl)) {
+            photos.push({ id });
+            onChange(photos);
+            paint();
+          }
+        };
+        native.capturePhoto("environment");
+        return;
+      }
+      file.click();
+    };
     file.onchange = () => {
       const f = file.files && file.files[0];
       if (!f) return;
@@ -828,7 +845,7 @@
     const day = rec.snapshot || CATALOGUE[rec.meta.day] || { equip: [], common: [] };
     const meta = rec.meta || {};
     let html =
-      "<article class='card'><p class='muted' style='letter-spacing:.08em;text-transform:uppercase;font-size:11px'>Orient Cement Limited · Electrical Department · Chittapur</p>" +
+      "<article class='card'><p class='muted' style='letter-spacing:.08em;text-transform:uppercase;font-size:11px'>Adani Cements · Electrical Department · Chittapur</p>" +
       "<h1>Weekly Electrical Maintenance Report</h1><p>" +
       esc(meta.form) +
       "</p><table><tbody>" +
@@ -964,7 +981,7 @@
       "</style></head><body>" +
       body +
       "</body></html>";
-    if (native && native.printHtml) native.printHtml(html, "OCL Maintenance Report");
+    if (native && native.printHtml) native.printHtml(html, "Adani Cements Maintenance Report");
     else {
       const w = window.open("", "_blank");
       if (w) {

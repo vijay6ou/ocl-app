@@ -8,6 +8,8 @@ export type OclNative = {
   capturePhoto?: (facing: "environment" | "user") => void;
   pickGallery?: () => void;
   takeLastCapture?: () => string | null;
+  requestLocationPermission?: () => void;
+  hasLocationPermission?: () => boolean;
 };
 
 declare global {

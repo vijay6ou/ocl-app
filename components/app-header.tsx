@@ -63,6 +63,7 @@ export function AppHeader({ initialUser }: { initialUser?: PublicUser | null }) 
       ? [
           { href: "/admin/catalogue", label: "Catalogue" },
           { href: "/admin/people", label: "People" },
+          { href: "/admin/storage", label: "Storage" },
         ]
       : []),
     { href: "/update", label: "Update" },

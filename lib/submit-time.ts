@@ -12,8 +12,26 @@ function ymdInZone(date: Date, timeZone: string) {
   }).format(date);
 }
 
-export function todayPlantDate() {
-  return ymdInZone(new Date(), PLANT_TIME_ZONE);
+export function plantSlotKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: PLANT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+  const minute = String(Math.floor(Number(get("minute")) / 15) * 15).padStart(2, "0");
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${minute} ${PLANT_TIME_ZONE_LABEL}`;
+}
+
+export function msUntilNextPlantSlot(date = new Date()) {
+  const SLOT = 15 * 60 * 1000;
+  const now = date.getTime();
+  return SLOT - (now % SLOT);
 }
 
 export function defaultHistoryRange() {

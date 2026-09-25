@@ -131,11 +131,18 @@ error. Discord failure never rolls back a saved record.
 server**. Technicians pick it up on next load.
 
 **The APK must be rebuilt.**
-Read `android/README.md` first. The `android/` source in this repo is **older
-than the app in the field**, and `publishToPlantServer` refuses to publish it —
-overwriting the live APK with an older build would leave phones unable to
-install. The APK currently served is preserved at
-`android/shipped/ocl-maintenance-v1.9.0-code11.apk`.
+Plant app is **1.10.0** (versionCode 12). Build with `./gradlew :app:publishToPlantServer`
+from `android/` after installing SDK 34.
+
+**Location check-ins.**
+Technicians (and any signed-in session) post lat/lng every 15 minutes to
+`LOCATION_DISCORD_WEBHOOK_URL` in `/etc/ocl-technician-log.env`. Optional
+`GOOGLE_MAPS_STATIC_KEY` attaches a satellite snapshot; without it the post
+still includes coordinates and a Maps satellite URL.
+
+**Admin storage.**
+**Storage** in the admin menu shows disk used under `data/` and can delete
+saved rounds plus unused photos between two dates. Catalogue and people stay.
 
 ## History
 

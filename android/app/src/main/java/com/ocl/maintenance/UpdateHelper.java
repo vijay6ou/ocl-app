@@ -101,7 +101,7 @@ final class UpdateHelper {
             Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
             intent.setData(Uri.parse("package:" + activity.getPackageName()));
             activity.startActivity(intent);
-            Toast.makeText(activity, "Allow installs from OCL Maintenance, then tap Install update again.", Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, "Allow installs from Adani Cements, then tap Install update again.", Toast.LENGTH_LONG).show();
             return;
         }
 

@@ -5,11 +5,13 @@ import seedDays from "@/lib/seed/all-days-data.json";
 import { SEED_ACCOUNTS } from "@/lib/constants";
 import { isFourDigitPin, PIN_LOCK_MS, PIN_MAX_FAILS, SEED_PINS } from "@/lib/seed-pins";
 import { bakeUprightImage } from "@/lib/image-orient";
+import { recordInDateRange } from "@/lib/submit-time";
 import type {
   Catalogue,
   DayKey,
   DaysData,
   DraftState,
+  LocationPing,
   PhotoMeta,
   PublicUser,
   SessionRecord,
@@ -28,6 +30,7 @@ const SUBMISSIONS_FILE = path.join(DATA_DIR, "submissions.json");
 const PHOTOS_FILE = path.join(DATA_DIR, "photos.json");
 const DRAFTS_FILE = path.join(DATA_DIR, "drafts.json");
 const DISCORD_THREADS_FILE = path.join(DATA_DIR, "discord-threads.json");
+const LOCATIONS_FILE = path.join(DATA_DIR, "locations.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -136,6 +139,12 @@ async function seedIfNeeded() {
     .then(() => true)
     .catch(() => false);
   if (!threadsExist) await writeJson(DISCORD_THREADS_FILE, {});
+
+  const locationsExist = await fs
+    .access(LOCATIONS_FILE)
+    .then(() => true)
+    .catch(() => false);
+  if (!locationsExist) await writeJson(LOCATIONS_FILE, []);
 
   await migrateUserPins();
 }
@@ -527,5 +536,131 @@ export async function clearDiscordThread(date: string) {
     const all = await readJson<Record<string, DiscordThread>>(DISCORD_THREADS_FILE, {});
     delete all[date];
     await writeJson(DISCORD_THREADS_FILE, all);
+  });
+}
+
+const MAX_LOCATION_PINGS = 4000;
+
+export async function findLocationPing(userId: string, slot: string) {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<LocationPing[]>(LOCATIONS_FILE, []);
+    return all.find((p) => p.userId === userId && p.slot === slot) ?? null;
+  });
+}
+
+export async function saveLocationPing(ping: LocationPing) {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<LocationPing[]>(LOCATIONS_FILE, []);
+    all.unshift(ping);
+    await writeJson(LOCATIONS_FILE, all.slice(0, MAX_LOCATION_PINGS));
+    return ping;
+  });
+}
+
+function photoIdsFromSubmission(record: Submission): string[] {
+  const ids: string[] = [];
+  if (record.selfie?.id) ids.push(record.selfie.id);
+  for (const st of Object.values(record.equip ?? {})) {
+    for (const p of st.photos ?? []) if (p.id) ids.push(p.id);
+  }
+  for (const st of Object.values(record.common ?? {})) {
+    for (const p of st.photos ?? []) if (p.id) ids.push(p.id);
+  }
+  return ids;
+}
+
+async function dirSize(dir: string): Promise<number> {
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    let total = 0;
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) total += await dirSize(full);
+      else {
+        const st = await fs.stat(full);
+        total += st.size;
+      }
+    }
+    return total;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return 0;
+    throw err;
+  }
+}
+
+async function fileSize(file: string): Promise<number> {
+  try {
+    return (await fs.stat(file)).size;
+  } catch {
+    return 0;
+  }
+}
+
+export async function getStorageUsage() {
+  await seedIfNeeded();
+  const [dataBytes, uploadsBytes, submissionsBytes, photosIndexBytes, locationsBytes] =
+    await Promise.all([
+      dirSize(DATA_DIR),
+      dirSize(UPLOAD_DIR),
+      fileSize(SUBMISSIONS_FILE),
+      fileSize(PHOTOS_FILE),
+      fileSize(LOCATIONS_FILE),
+    ]);
+  const store = await loadAll();
+  return {
+    dataBytes,
+    uploadsBytes,
+    otherBytes: Math.max(0, dataBytes - uploadsBytes),
+    submissionsBytes,
+    photosIndexBytes,
+    locationsBytes,
+    submissionCount: store.submissions.length,
+    photoCount: store.photos.length,
+  };
+}
+
+export async function previewDeleteByDateRange(from: string, to: string) {
+  return withLock(async () => {
+    const store = await loadAll();
+    const matched = store.submissions.filter((s) => recordInDateRange(s, from, to));
+    const keep = store.submissions.filter((s) => !recordInDateRange(s, from, to));
+    const keepPhotoIds = new Set(keep.flatMap(photoIdsFromSubmission));
+    const photoIds = new Set(
+      matched.flatMap(photoIdsFromSubmission).filter((id) => !keepPhotoIds.has(id))
+    );
+    return {
+      submissionCount: matched.length,
+      photoCount: photoIds.size,
+      from,
+      to,
+    };
+  });
+}
+
+export async function deleteSubmissionsByDateRange(from: string, to: string) {
+  return withLock(async () => {
+    const store = await loadAll();
+    const matched = store.submissions.filter((s) => recordInDateRange(s, from, to));
+    const keep = store.submissions.filter((s) => !recordInDateRange(s, from, to));
+    const keepPhotoIds = new Set(keep.flatMap(photoIdsFromSubmission));
+    const dropPhotoIds = [
+      ...new Set(matched.flatMap(photoIdsFromSubmission).filter((id) => !keepPhotoIds.has(id))),
+    ];
+    store.submissions = keep;
+    store.photos = store.photos.filter((p) => !dropPhotoIds.includes(p.id));
+    await writeJson(SUBMISSIONS_FILE, store.submissions);
+    await writeJson(PHOTOS_FILE, store.photos);
+    for (const id of dropPhotoIds) {
+      await fs.unlink(path.join(UPLOAD_DIR, id)).catch(() => undefined);
+    }
+    return {
+      deletedSubmissions: matched.length,
+      deletedPhotos: dropPhotoIds.length,
+      from,
+      to,
+    };
   });
 }
