@@ -28,7 +28,7 @@ export type NotifyResult = {
 const DISCORD_FILE_LIMIT = 8 * 1024 * 1024;
 const DISCORD_MAX_FILES = 10;
 const DISCORD_TEXT_LIMIT = 1900;
-const APP_UA = "OCLMaintenance/1.10.0";
+const APP_UA = "OCLMaintenance/1.11.0";
 
 type NotifyFile = { name: string; mime: string; bytes: Buffer };
 

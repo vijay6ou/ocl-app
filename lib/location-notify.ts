@@ -1,18 +1,22 @@
+import { decode, encode } from "jpeg-js";
 import { plantSlotKey, PLANT_TIME_ZONE_LABEL } from "@/lib/submit-time";
 import type { LocationPing, PublicUser } from "@/lib/types";
 
-const APP_UA = "OCLMaintenance/1.10.0";
+const APP_UA = "OCLMaintenance/1.11.0";
+
+/** Esri ArcGIS Online World Imagery MapServer (no API key). */
+const ESRI_WORLD_IMAGERY_EXPORT =
+  "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export";
+
+const SNAP_W = 640;
+const SNAP_H = 420;
 
 function locationWebhook() {
   return (process.env.LOCATION_DISCORD_WEBHOOK_URL ?? "").trim();
 }
 
-function mapsKey() {
-  return (process.env.GOOGLE_MAPS_STATIC_KEY ?? "").trim();
-}
-
 export function mapsSatelliteUrl(lat: number, lng: number) {
-  return `https://www.google.com/maps?q=${lat},${lng}&t=k`;
+  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
 }
 
 export function formatLocationDiscord(ping: LocationPing) {
@@ -22,32 +26,81 @@ export function formatLocationDiscord(ping: LocationPing) {
       : "unknown";
   const snap = ping.satelliteAttached
     ? "Satellite snapshot attached."
-    : "Satellite snapshot not attached (Maps key not set on the plant server). Open the map link.";
+    : "Satellite snapshot not attached (imagery fetch failed). Open the map link.";
   return [
     `Location check-in · ${ping.slot}`,
     `${ping.name} (${ping.username})`,
     `Lat ${ping.lat.toFixed(6)}  Lng ${ping.lng.toFixed(6)}  ±${acc}`,
-    `Map (satellite): ${ping.mapUrl}`,
+    `Map: ${ping.mapUrl}`,
     snap,
   ].join("\n");
 }
 
-async function fetchSatelliteJpeg(lat: number, lng: number): Promise<Buffer | null> {
-  const key = mapsKey();
-  if (!key) return null;
-  const url = new URL("https://maps.googleapis.com/maps/api/staticmap");
-  url.searchParams.set("center", `${lat},${lng}`);
-  url.searchParams.set("zoom", "18");
-  url.searchParams.set("size", "640x420");
-  url.searchParams.set("maptype", "satellite");
-  url.searchParams.set("markers", `color:red|${lat},${lng}`);
-  url.searchParams.set("key", key);
+function imageryBbox(lat: number, lng: number) {
+  const halfLat = 0.0018;
+  const cos = Math.max(0.15, Math.cos((lat * Math.PI) / 180));
+  const halfLng = 0.0018 / cos;
+  const minLng = lng - halfLng;
+  const minLat = lat - halfLat;
+  const maxLng = lng + halfLng;
+  const maxLat = lat + halfLat;
+  return `${minLng},${minLat},${maxLng},${maxLat}`;
+}
+
+function stampCenterPin(jpeg: Buffer): Buffer {
   try {
-    const res = await fetch(url.toString(), { headers: { "User-Agent": APP_UA } });
+    const img = decode(jpeg, { maxMemoryUsageInMB: 32, useTArray: true });
+    const w = img.width;
+    const h = img.height;
+    const data = img.data as Uint8Array;
+    const cx = Math.floor(w / 2);
+    const cy = Math.floor(h / 2) - 6;
+    const setPx = (x: number, y: number, r: number, g: number, b: number, a = 255) => {
+      if (x < 0 || y < 0 || x >= w || y >= h) return;
+      const i = (y * w + x) * 4;
+      const srcA = a / 255;
+      data[i] = Math.round(r * srcA + data[i] * (1 - srcA));
+      data[i + 1] = Math.round(g * srcA + data[i + 1] * (1 - srcA));
+      data[i + 2] = Math.round(b * srcA + data[i + 2] * (1 - srcA));
+      data[i + 3] = 255;
+    };
+    const fillCircle = (ox: number, oy: number, radius: number, r: number, g: number, b: number) => {
+      const rr = radius * radius;
+      for (let y = -radius; y <= radius; y += 1) {
+        for (let x = -radius; x <= radius; x += 1) {
+          if (x * x + y * y <= rr) setPx(ox + x, oy + y, r, g, b);
+        }
+      }
+    };
+    fillCircle(cx, cy, 11, 255, 255, 255);
+    fillCircle(cx, cy, 8, 220, 38, 38);
+    fillCircle(cx, cy, 3, 255, 255, 255);
+    for (let y = 8; y <= 22; y += 1) {
+      for (let x = -2; x <= 2; x += 1) {
+        const t = (y - 8) / 14;
+        const taper = Math.max(0, 2 - Math.floor(t * 2));
+        if (Math.abs(x) <= taper) setPx(cx + x, cy + y, 220, 38, 38);
+      }
+    }
+    const encoded = encode({ data: Buffer.from(data), width: w, height: h }, 85);
+    return Buffer.from(Uint8Array.from(encoded.data));
+  } catch {
+    return jpeg;
+  }
+}
+
+export async function fetchSatelliteJpeg(lat: number, lng: number): Promise<Buffer | null> {
+  const bbox = imageryBbox(lat, lng);
+  const url = `${ESRI_WORLD_IMAGERY_EXPORT}?bbox=${bbox}&bboxSR=4326&imageSR=4326&size=${SNAP_W},${SNAP_H}&format=jpg&f=image`;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": APP_UA, Accept: "image/jpeg" },
+    });
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length < 200 || buf.length > 7_500_000) return null;
-    return buf;
+    if (buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+    return stampCenterPin(buf);
   } catch {
     return null;
   }
@@ -101,6 +154,4 @@ export async function buildLocationPing(
   return { ping, jpeg };
 }
 
-export function mapsKeyConfigured() {
-  return Boolean(mapsKey());
-}
+export const SATELLITE_IMAGERY_SOURCE = "Esri World Imagery";

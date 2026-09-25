@@ -1,9 +1,9 @@
 export const ANDROID_APP = {
   packageId: "com.ocl.maintenance",
   displayName: "Adani Cements",
-  versionName: "1.10.0",
-  versionCode: 12,
+  versionName: "1.11.0",
+  versionCode: 13,
   apkFileName: "ocl-maintenance.apk",
   notes:
-    "Add equipment/field at the top of the catalogue. Technician location every 15 minutes. Admin storage and date-range delete. Chevron-only cards, gallery picker, upright PDF, last-30-day records.",
+    "Location check-ins attach a free Esri World Imagery snapshot (no Google Static Maps key). 15-minute slots, add-at-top catalogue, admin storage, chevron-only cards, gallery picker, upright PDF.",
 } as const;
