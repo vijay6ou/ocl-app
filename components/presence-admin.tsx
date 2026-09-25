@@ -29,7 +29,34 @@ function PersonTable({
     return <p className="text-sm text-muted-foreground">{empty}</p>;
   }
   return (
-    <div className="overflow-x-auto">
+    <>
+      <div className="space-y-3 md:hidden">
+        {rows.map((row) => (
+          <div key={`${row.userId}-${row.signedInAt}-m`} className="rounded-lg border p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{row.name}</span>
+              {row.online ? <Badge>On app</Badge> : null}
+              <Badge variant="outline">{row.role}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{row.username}</p>
+            <dl className="mt-2 grid grid-cols-1 gap-1 text-sm">
+              <div>
+                <dt className="text-xs text-muted-foreground">Signed in</dt>
+                <dd>{formatSubmitTimestamp(row.signedInAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Last seen</dt>
+                <dd>{formatSubmitTimestamp(row.lastSeenAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Time on app</dt>
+                <dd>{formatDuration(row.durationMs)}</dd>
+              </div>
+            </dl>
+          </div>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
       <table className="w-full min-w-[32rem] text-left text-sm">
         <thead className="text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
@@ -61,7 +88,8 @@ function PersonTable({
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 
