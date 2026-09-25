@@ -30,6 +30,7 @@ const SUBMISSIONS_FILE = path.join(DATA_DIR, "submissions.json");
 const PHOTOS_FILE = path.join(DATA_DIR, "photos.json");
 const DRAFTS_FILE = path.join(DATA_DIR, "drafts.json");
 const DISCORD_THREADS_FILE = path.join(DATA_DIR, "discord-threads.json");
+const LOCATION_DISCORD_THREADS_FILE = path.join(DATA_DIR, "location-discord-threads.json");
 const LOCATIONS_FILE = path.join(DATA_DIR, "locations.json");
 
 type FileStore = {
@@ -139,6 +140,12 @@ async function seedIfNeeded() {
     .then(() => true)
     .catch(() => false);
   if (!threadsExist) await writeJson(DISCORD_THREADS_FILE, {});
+
+  const locationThreadsExist = await fs
+    .access(LOCATION_DISCORD_THREADS_FILE)
+    .then(() => true)
+    .catch(() => false);
+  if (!locationThreadsExist) await writeJson(LOCATION_DISCORD_THREADS_FILE, {});
 
   const locationsExist = await fs
     .access(LOCATIONS_FILE)
@@ -536,6 +543,24 @@ export async function clearDiscordThread(date: string) {
     const all = await readJson<Record<string, DiscordThread>>(DISCORD_THREADS_FILE, {});
     delete all[date];
     await writeJson(DISCORD_THREADS_FILE, all);
+  });
+}
+
+export async function getLocationDiscordThread(date: string): Promise<DiscordThread | null> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<Record<string, DiscordThread>>(LOCATION_DISCORD_THREADS_FILE, {});
+    return all[date] ?? null;
+  });
+}
+
+export async function saveLocationDiscordThread(date: string, threadId: string) {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<Record<string, DiscordThread>>(LOCATION_DISCORD_THREADS_FILE, {});
+    all[date] = { threadId, updatedAt: new Date().toISOString() };
+    await writeJson(LOCATION_DISCORD_THREADS_FILE, all);
+    return all[date];
   });
 }
 

@@ -1,4 +1,5 @@
 import { decode, encode } from "jpeg-js";
+import { getLocationDiscordThread, saveLocationDiscordThread } from "@/lib/store";
 import { plantSlotKey, PLANT_TIME_ZONE_LABEL } from "@/lib/submit-time";
 import type { LocationPing, PublicUser } from "@/lib/types";
 
@@ -109,23 +110,34 @@ export async function fetchSatelliteJpeg(lat: number, lng: number): Promise<Buff
 export async function notifyLocationDiscord(ping: LocationPing, jpeg: Buffer | null) {
   const hook = locationWebhook();
   if (!hook) return { status: "skipped" as const, attached: false };
+  const date = ping.slot.slice(0, 10);
+  const existing = await getLocationDiscordThread(date);
   const form = new FormData();
-  const payload = {
+  const payload: Record<string, unknown> = {
     username: "Adani Cements location",
     content: formatLocationDiscord({ ...ping, satelliteAttached: Boolean(jpeg) }).slice(0, 1900),
   };
+  if (!existing?.threadId) payload.thread_name = `Location · ${date}`;
   form.append("payload_json", JSON.stringify(payload));
   if (jpeg) {
     form.append("files[0]", new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }), "satellite.jpg");
   }
   const url = new URL(hook);
   url.searchParams.set("wait", "true");
+  if (existing?.threadId) url.searchParams.set("thread_id", existing.threadId);
   const res = await fetch(url.toString(), {
     method: "POST",
     body: form,
     headers: { "User-Agent": APP_UA },
   });
+  const raw = await res.text();
   if (!res.ok) return { status: "failed" as const, attached: Boolean(jpeg) };
+  try {
+    const msg = JSON.parse(raw) as { channel_id?: string };
+    if (msg.channel_id) await saveLocationDiscordThread(date, String(msg.channel_id));
+  } catch {
+    /* thread id is optional for a successful post */
+  }
   return { status: "ok" as const, attached: Boolean(jpeg) };
 }
 
