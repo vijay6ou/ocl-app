@@ -81,6 +81,26 @@ export function PrintReport({ record }: { record: Submission }) {
         <p className="text-emerald-800">No FAIL checks or defect remarks were recorded.</p>
       )}
 
+      {record.dayNotes?.trim() || record.dayPhotos?.length ? (
+        <section>
+          <h3 className="mb-2 font-heading font-semibold">Day notes</h3>
+          {record.dayNotes?.trim() ? <p className="whitespace-pre-wrap">{record.dayNotes}</p> : null}
+          {record.dayPhotos?.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {record.dayPhotos.map((p) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={p.id}
+                  src={`/api/photos/${p.id}`}
+                  alt="Day note"
+                  className="h-24 rounded border object-cover"
+                />
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="space-y-4">
         <h3 className="font-heading font-semibold">Equipment</h3>
         {snapshot.equip.map((item) => {

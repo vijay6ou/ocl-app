@@ -20,7 +20,6 @@ import type {
   Catalogue,
   DaysData,
   DraftState,
-  EodNote,
   LocationPing,
   PhotoMeta,
   Plant,
@@ -50,7 +49,6 @@ const LOCATION_WINDOW_FILE = path.join(DATA_DIR, "location-window.json");
 const PRESENCE_FILE = path.join(DATA_DIR, "presence.json");
 const BLOCKS_FILE = path.join(DATA_DIR, "blocks.json");
 const SUPER_BLOCKS_FILE = path.join(DATA_DIR, "super-blocks.json");
-const EOD_FILE = path.join(DATA_DIR, "eod.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -190,9 +188,6 @@ async function seedIfNeeded() {
 
   const superExist = await fs.access(SUPER_BLOCKS_FILE).then(() => true).catch(() => false);
   if (!superExist) await writeJson(SUPER_BLOCKS_FILE, []);
-
-  const eodExist = await fs.access(EOD_FILE).then(() => true).catch(() => false);
-  if (!eodExist) await writeJson(EOD_FILE, []);
 
   await migrateUserPins();
   await migrateUserGrants();
@@ -747,44 +742,6 @@ export async function listPhotos(): Promise<PhotoMeta[]> {
   });
 }
 
-export async function listEodNotes(): Promise<EodNote[]> {
-  return withLock(async () => {
-    await seedIfNeeded();
-    return readJson<EodNote[]>(EOD_FILE, []);
-  });
-}
-
-export async function getEodNote(id: string): Promise<EodNote | null> {
-  return withLock(async () => {
-    await seedIfNeeded();
-    const all = await readJson<EodNote[]>(EOD_FILE, []);
-    return all.find((n) => n.id === id) ?? null;
-  });
-}
-
-export async function upsertEodNote(note: EodNote): Promise<EodNote> {
-  return withLock(async () => {
-    await seedIfNeeded();
-    const all = await readJson<EodNote[]>(EOD_FILE, []);
-    const saved: EodNote = { ...note, savedAt: new Date().toISOString() };
-    const idx = all.findIndex((n) => n.id === saved.id);
-    const next = idx >= 0 ? all.map((n) => (n.id === saved.id ? saved : n)) : [saved, ...all];
-    await writeJson(EOD_FILE, next);
-    return saved;
-  });
-}
-
-export async function deleteEodNote(id: string) {
-  return withLock(async () => {
-    await seedIfNeeded();
-    const all = await readJson<EodNote[]>(EOD_FILE, []);
-    await writeJson(
-      EOD_FILE,
-      all.filter((n) => n.id !== id)
-    );
-  });
-}
-
 function draftKey(userId: string, day: string) {
   return `${userId}:${day}`;
 }
@@ -985,6 +942,7 @@ function photoIdsFromSubmission(record: Submission): string[] {
   for (const st of Object.values(record.common ?? {})) {
     for (const p of st.photos ?? []) if (p.id) ids.push(p.id);
   }
+  for (const p of record.dayPhotos ?? []) if (p.id) ids.push(p.id);
   return ids;
 }
 

@@ -37,8 +37,8 @@ function kindLabel(kind: PhotoKind) {
       return "Common";
     case "nameplate":
       return "Nameplate";
-    case "eod":
-      return "Handover";
+    case "summary":
+      return "Day note";
     case "album":
       return "Album";
     default:
@@ -111,8 +111,9 @@ export function FilesAlbum() {
         </p>
         <h1 className="font-heading text-3xl font-semibold">Files</h1>
         <p className="text-sm text-muted-foreground">
-          Photos sit in the same tree as the plant: plant → section → area → motor tag. Open a
-          machine to see every shot of it, then add another from the rear camera or the gallery.
+          Photos sit in the same tree as the plant. Each machine’s folder is its{" "}
+          <span className="font-medium text-foreground">equipment ID</span>. Photos you take on the
+          round land here automatically. You can also add a shot from this page.
         </p>
       </div>
 
@@ -183,7 +184,7 @@ export function FilesAlbum() {
           items={live.area.equipment.map((e) => ({
             key: e.key,
             title: e.name,
-            blurb: e.tag,
+            blurb: e.equipmentId ? `${e.tag} · ${e.equipmentId}` : e.tag,
             count: e.photoCount,
             thumb: e.photos[0]?.url,
             icon: "equip" as const,
@@ -275,16 +276,21 @@ function EquipAlbum({
   equip: AlbumEquipment;
   onUploaded: () => void;
 }) {
+  const commonId = equip.key.startsWith("common:") ? equip.key.slice("common:".length) : undefined;
   const refs: PhotoRef[] = equip.photos.map((p) => ({
     id: p.id,
     equipmentId: equip.equipmentId,
+    commonId,
     kind: p.kind,
   }));
 
   return (
     <div className="space-y-4">
       <div>
-        <p className="font-mono text-xs text-muted-foreground">{equip.tag}</p>
+        <p className="font-mono text-xs text-muted-foreground">
+          {equip.tag}
+          {equip.equipmentId ? ` · ${equip.equipmentId}` : ""}
+        </p>
         <h2 className="font-heading text-2xl">{equip.name}</h2>
         <p className="text-sm text-muted-foreground">
           {plant.name} · {section.name} · {area.label}
@@ -294,12 +300,13 @@ function EquipAlbum({
         <p className="mb-2 text-sm font-medium">Add to this machine</p>
         <PhotoCapture
           photos={refs}
-          kind={equip.key.startsWith("common:") ? "common" : "album"}
+          kind={commonId ? "common" : "album"}
           equipmentId={equip.equipmentId}
+          commonId={commonId}
           facing="environment"
           gallery
           label="Rear camera"
-          hint="Rear camera or insert from gallery. This shot stays with this motor."
+          hint="Rear camera or insert from gallery. Saved in this machine’s equipment-ID folder, same bin as round photos."
           place={{
             plantId: plant.plantId,
             plantName: plant.name,
@@ -308,8 +315,11 @@ function EquipAlbum({
             areaId: area.areaId,
             areaName: area.label,
             equipmentId: equip.equipmentId,
-            equipmentTag: equip.tag,
-            equipmentName: equip.name,
+            equipmentTag: commonId ? undefined : equip.tag,
+            equipmentName: commonId ? undefined : equip.name,
+            commonId,
+            commonTag: commonId ? equip.tag : undefined,
+            commonName: commonId ? equip.name : undefined,
             source: "album",
           }}
           source="album"

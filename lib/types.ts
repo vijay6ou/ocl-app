@@ -138,11 +138,11 @@ export type PhotoKind =
   | "remark"
   | "common"
   | "selfie"
-  | "eod"
+  | "summary"
   | "album"
   | "nameplate";
 
-export type PhotoSource = "form" | "eod" | "album";
+export type PhotoSource = "form" | "album" | "summary";
 
 export type PhotoMeta = {
   id: string;
@@ -241,6 +241,8 @@ export type Submission = {
   fails: FailItem[];
   snapshot: DaySnapshot;
   selfie?: PhotoRef;
+  dayNotes?: string;
+  dayPhotos?: PhotoRef[];
 };
 
 export type LocationPing = {
@@ -279,58 +281,7 @@ export type DraftState = {
   };
   equip: Record<string, EquipState>;
   common: Record<string, CommonState>;
-};
-
-export type EodBlockKind =
-  | "heading"
-  | "text"
-  | "bullets"
-  | "numbered"
-  | "checklist"
-  | "photo"
-  | "count"
-  | "time"
-  | "callout"
-  | "handover"
-  | "spoken";
-
-export type EodListItem = {
-  id: string;
-  text: string;
-  done?: boolean;
-};
-
-export type EodBlock = {
-  id: string;
-  kind: EodBlockKind;
-  text?: string;
-  items?: EodListItem[];
-  photos?: PhotoRef[];
-  label?: string;
-  value?: string;
-  unit?: string;
-  at?: string;
-  tone?: "info" | "warn" | "urgent";
-  from?: string;
-  to?: string;
-};
-
-export type EodStatus = "DRAFT" | "SUBMITTED";
-
-export type EodNote = {
-  id: string;
-  savedAt: string;
-  submittedAt?: string;
-  status: EodStatus;
-  date: string;
-  shift: ShiftCode | "";
-  techId: string;
-  tech: string;
-  plantId?: string;
-  plantName?: string;
-  sectionId?: string;
-  sectionName?: string;
-  areaId?: string;
-  areaName?: string;
-  blocks: EodBlock[];
+  /** Plain end-of-round note, written just before submit. */
+  dayNotes?: string;
+  dayPhotos?: PhotoRef[];
 };

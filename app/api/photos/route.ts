@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/auth";
 import { PHOTO_MAX_BYTES } from "@/lib/constants";
 import { canSeeArea } from "@/lib/hierarchy";
-import { buildAlbumTree, fillPlaceFromCatalogue, type PhotoPlace } from "@/lib/media-path";
+import { buildAlbumTree, fillPlaceFromCatalogue, locateEquipment, type PhotoPlace } from "@/lib/media-path";
 import { getCatalogue, listPhotos, savePhotoFile } from "@/lib/store";
 import type { PhotoKind, PhotoMeta, PhotoSource } from "@/lib/types";
 
@@ -14,7 +14,7 @@ const KINDS = new Set<PhotoKind>([
   "remark",
   "common",
   "selfie",
-  "eod",
+  "summary",
   "album",
   "nameplate",
 ]);
@@ -36,8 +36,10 @@ export async function GET(req: Request) {
     const equipmentId = url.searchParams.get("equipmentId") ?? "";
     let rows = photos.filter((p) => {
       if (p.kind === "selfie") return user.role === "admin" || p.uploadedBy === user.id;
-      if (!p.areaId) return user.role === "admin";
-      return canSeeArea(user, catalogue, p.areaId);
+      const located = locateEquipment(catalogue, p.equipmentId, p.commonId);
+      const areaId = located?.areaId || p.areaId;
+      if (!areaId) return user.role === "admin";
+      return canSeeArea(user, catalogue, areaId);
     });
     if (areaId) rows = rows.filter((p) => p.areaId === areaId);
     if (equipmentId) rows = rows.filter((p) => p.equipmentId === equipmentId);
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
     const checkRaw = form.get("checkIndex");
     const sourceRaw = formText(form, "source");
     const source: PhotoSource | undefined =
-      sourceRaw === "form" || sourceRaw === "eod" || sourceRaw === "album" ? sourceRaw : undefined;
+      sourceRaw === "form" || sourceRaw === "album" || sourceRaw === "summary" ? sourceRaw : undefined;
     const catalogue = await getCatalogue();
     const place: PhotoPlace = fillPlaceFromCatalogue(catalogue, {
       plantId: formText(form, "plantId"),
@@ -94,6 +96,9 @@ export async function POST(req: Request) {
     });
     if (place.areaId && user.role !== "admin" && !canSeeArea(user, catalogue, place.areaId)) {
       return NextResponse.json({ error: "You are not assigned to that area." }, { status: 403 });
+    }
+    if ((place.equipmentId || place.commonId) && !place.areaId && user.role !== "admin") {
+      return NextResponse.json({ error: "That machine is not on your plant tree." }, { status: 403 });
     }
     const meta: PhotoMeta = {
       id: crypto.randomUUID(),

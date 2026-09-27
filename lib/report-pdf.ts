@@ -148,6 +148,18 @@ export async function buildSubmissionPdf(record: Submission, photos: PdfPhoto[])
     });
   }
 
+  if (record.dayNotes?.trim() || record.dayPhotos?.length) {
+    line(c, "Day notes", { size: 12, bold: true, gap: 4 });
+    if (record.dayNotes?.trim()) {
+      line(c, record.dayNotes.trim(), { size: 10, gap: 4 });
+    }
+    const dayShots = (record.dayPhotos ?? [])
+      .map((p) => photoById.get(p.id))
+      .filter((p): p is PdfPhoto => Boolean(p));
+    await drawPhotos(c, dayShots);
+    c.y -= 4;
+  }
+
   line(c, "Equipment", { size: 13, bold: true, gap: 6 });
 
   for (const item of record.snapshot.equip) {

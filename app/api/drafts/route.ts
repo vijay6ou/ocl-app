@@ -3,7 +3,7 @@ import { jsonError, requireUser } from "@/lib/auth";
 import { canSeeArea, canonicalAreaId } from "@/lib/hierarchy";
 import { isSafeSectionId } from "@/lib/section-ids";
 import { deleteDraft, getCatalogue, getDraft, saveDraft } from "@/lib/store";
-import type { CommonState, DraftState, EquipState, ShiftCode } from "@/lib/types";
+import type { CommonState, DraftState, EquipState, PhotoRef, ShiftCode } from "@/lib/types";
 import { SHIFT_OPTIONS } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +40,8 @@ export async function PUT(req: Request) {
       sup?: string;
       equip?: Record<string, EquipState>;
       common?: Record<string, CommonState>;
+      dayNotes?: string;
+      dayPhotos?: PhotoRef[];
     };
     if (!body.day || !(await knownSection(body.day, user))) {
       return NextResponse.json({ error: "Pick a plant subsection." }, { status: 400 });
@@ -57,6 +59,8 @@ export async function PUT(req: Request) {
       },
       equip: body.equip ?? {},
       common: body.common ?? {},
+      dayNotes: (body.dayNotes ?? "").trim(),
+      dayPhotos: body.dayPhotos ?? [],
     };
     const saved = await saveDraft(user.id, draft);
     return NextResponse.json({ draft: saved });

@@ -31,6 +31,7 @@ import {
   type DraftState,
   type EquipState,
   type Equipment,
+  type PhotoRef,
   type ShiftCode,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -64,7 +65,9 @@ function hasDraftWork(draft: DraftState) {
     ) ||
     Object.values(draft.common).some(
       (c) => c.ok || c.remarks.trim() || c.photos.length
-    )
+    ) ||
+    Boolean(draft.dayNotes?.trim()) ||
+    Boolean(draft.dayPhotos?.length)
   );
 }
 
@@ -97,6 +100,8 @@ export function ChecklistForm({
   const [sup, setSup] = useState("");
   const [equip, setEquip] = useState<Record<string, EquipState>>({});
   const [common, setCommon] = useState<Record<string, CommonState>>({});
+  const [dayNotes, setDayNotes] = useState("");
+  const [dayPhotos, setDayPhotos] = useState<PhotoRef[]>([]);
   const [draftBanner, setDraftBanner] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pane, setPane] = useState<Pane>("equipment");
@@ -157,6 +162,8 @@ export function ChecklistForm({
         setSup(pick.meta.sup);
         setEquip(pick.equip);
         setCommon(pick.common);
+        setDayNotes(pick.dayNotes ?? "");
+        setDayPhotos(pick.dayPhotos ?? []);
         setDraftBanner(true);
       }
       skipNextSave.current = false;
@@ -187,6 +194,8 @@ export function ChecklistForm({
       meta: { date, shift, sup },
       equip,
       common,
+      dayNotes,
+      dayPhotos,
     };
     const localTimer = window.setTimeout(() => {
       try {
@@ -199,7 +208,7 @@ export function ChecklistForm({
       setSaveState("saving");
       api<{ draft: DraftState }>("/api/drafts", {
         method: "PUT",
-        body: JSON.stringify({ day: dayKey, date, shift, sup, equip, common }),
+        body: JSON.stringify({ day: dayKey, date, shift, sup, equip, common, dayNotes, dayPhotos }),
       })
         .then(() => setSaveState("saved"))
         .catch(() => setSaveState("offline"));
@@ -208,7 +217,7 @@ export function ChecklistForm({
       window.clearTimeout(localTimer);
       window.clearTimeout(serverTimer);
     };
-  }, [user, dayKey, section, date, shift, sup, equip, common]);
+  }, [user, dayKey, section, date, shift, sup, equip, common, dayNotes, dayPhotos]);
 
   const progress = useMemo(
     () => (section ? progressForDay(section, equip, common) : { done: 0, total: 0, pct: 0 }),
@@ -249,6 +258,8 @@ export function ChecklistForm({
           sup,
           equip,
           common,
+          dayNotes,
+          dayPhotos,
           selfieId: gate.selfieId,
           pin: gate.pin,
         }),
@@ -278,6 +289,8 @@ export function ChecklistForm({
     setSup("");
     setEquip({});
     setCommon({});
+    setDayNotes("");
+    setDayPhotos([]);
     setDraftBanner(false);
     if (user && dayKey) {
       localStorage.removeItem(localDraftKey(user.id, dayKey));
@@ -459,7 +472,7 @@ export function ChecklistForm({
                               facing="environment"
                               gallery
                               label="Rear camera"
-                              hint="Rear camera or insert from this phone’s gallery. Saved under this device in Files."
+                              hint="Rear camera or gallery. Filed under this device’s ID in Files."
                               place={{
                                 ...placeBase,
                                 commonId: item.id,
@@ -488,7 +501,7 @@ export function ChecklistForm({
             <p className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">
               Summary
             </p>
-            <CardTitle className="text-xl">Ready to archive</CardTitle>
+            <CardTitle className="text-xl">Day notes, then submit</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <dl className="grid gap-2 text-sm sm:grid-cols-2">
@@ -526,6 +539,28 @@ export function ChecklistForm({
                 );
               })}
             </ul>
+            <div className="space-y-2 border-t pt-3">
+              <Label htmlFor="day-notes">Day notes</Label>
+              <Textarea
+                id="day-notes"
+                value={dayNotes}
+                onChange={(e) => setDayNotes(e.target.value)}
+                placeholder="What the next man needs: leftover jobs, open permits, parts used, anything not on the cards…"
+              />
+              <Label>Photos for this round</Label>
+              <PhotoCapture
+                photos={dayPhotos}
+                kind="summary"
+                facing="environment"
+                gallery
+                label="Rear camera"
+                hint="Board, permit, leftover isolation — not a specific motor. Motor photos on the cards already go into that machine’s Files folder."
+                place={placeBase}
+                source="summary"
+                date={date}
+                onChange={setDayPhotos}
+              />
+            </div>
             {progress.pct < 100 ? (
               <p className="text-sm text-amber-800">
                 Some statuses or checks are still open. You can still submit; the record will be marked PENDING.
@@ -737,7 +772,7 @@ function EquipmentCard({
                 facing="environment"
                 gallery
                 label="Rear camera"
-                hint="Rear camera or insert from this phone’s gallery. Every shot of this motor is kept in Files under its tag."
+                hint="Rear camera or gallery. Filed under this motor’s equipment ID in Files."
                 place={{
                   ...place,
                   equipmentId: item.id,

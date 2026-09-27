@@ -18,7 +18,7 @@ export type PhotoPlace = {
   commonId?: string;
   commonTag?: string;
   commonName?: string;
-  source?: "form" | "eod" | "album";
+  source?: "form" | "album" | "summary";
   date?: string;
   techSlug?: string;
 };
@@ -43,6 +43,71 @@ export function assertSafeRelPath(rel: string): string {
     throw new Error("Invalid media path.");
   }
   return parts.join("/");
+}
+
+export function equipmentFolder(id: string): string {
+  const trimmed = id.trim();
+  if (/^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/.test(trimmed)) return trimmed;
+  return slugSegment(trimmed);
+}
+
+export function locateEquipment(
+  catalogue: Catalogue,
+  equipmentId?: string,
+  commonId?: string
+): {
+  areaId: string;
+  plantId?: string;
+  plantName?: string;
+  sectionId?: string;
+  sectionName?: string;
+  areaName?: string;
+  equipmentId?: string;
+  equipmentTag?: string;
+  equipmentName?: string;
+  commonId?: string;
+  commonTag?: string;
+  commonName?: string;
+} | null {
+  if (equipmentId) {
+    for (const [areaId, day] of Object.entries(catalogue.days)) {
+      const eq = day.equip.find((e) => e.id === equipmentId);
+      if (!eq) continue;
+      const path = pathForArea(catalogue, areaId);
+      return {
+        areaId: path.areaId,
+        plantId: path.plant?.id,
+        plantName: path.plant?.name,
+        sectionId: path.section?.id,
+        sectionName: path.section?.name,
+        areaName: path.area?.label,
+        equipmentId: eq.id,
+        equipmentTag: eq.tag,
+        equipmentName: eq.name,
+      };
+    }
+  }
+  if (commonId) {
+    for (const [areaId, day] of Object.entries(catalogue.days)) {
+      for (const group of day.common) {
+        const item = group.items.find((i) => i.id === commonId);
+        if (!item) continue;
+        const path = pathForArea(catalogue, areaId);
+        return {
+          areaId: path.areaId,
+          plantId: path.plant?.id,
+          plantName: path.plant?.name,
+          sectionId: path.section?.id,
+          sectionName: path.section?.name,
+          areaName: path.area?.label,
+          commonId: item.id,
+          commonTag: item.tag,
+          commonName: item.device,
+        };
+      }
+    }
+  }
+  return null;
 }
 
 export function extForPhoto(filename: string, mime: string): string {
@@ -74,13 +139,13 @@ export function mediaRelPath(
   const section = slugSegment(place.sectionId || place.sectionName || "section");
   const area = slugSegment(place.areaId || place.areaName || "area");
 
-  if (place.commonId || place.commonTag) {
-    const folder = slugSegment(place.commonTag || place.commonId || "common");
+  if (place.commonId) {
+    const folder = equipmentFolder(place.commonId);
     return `${plant}/${section}/${area}/_common/${folder}/${date}-${kind}-${short}.${ext}`;
   }
 
-  if (place.equipmentId || place.equipmentTag) {
-    const folder = slugSegment(place.equipmentTag || place.equipmentId || "equip");
+  if (place.equipmentId) {
+    const folder = equipmentFolder(place.equipmentId);
     return `${plant}/${section}/${area}/${folder}/${date}-${kind}-${short}.${ext}`;
   }
 
@@ -88,16 +153,23 @@ export function mediaRelPath(
 }
 
 export function fillPlaceFromCatalogue(catalogue: Catalogue, place: PhotoPlace): PhotoPlace {
-  if (!place.areaId) return place;
-  const path = pathForArea(catalogue, place.areaId);
+  const located = locateEquipment(catalogue, place.equipmentId, place.commonId);
+  const areaId = located?.areaId || place.areaId;
+  const path = areaId ? pathForArea(catalogue, areaId) : null;
   return {
     ...place,
-    plantId: place.plantId || path.plant?.id,
-    plantName: place.plantName || path.plant?.name,
-    sectionId: place.sectionId || path.section?.id,
-    sectionName: place.sectionName || path.section?.name,
-    areaId: path.areaId,
-    areaName: place.areaName || path.area?.label,
+    plantId: place.plantId || located?.plantId || path?.plant?.id,
+    plantName: place.plantName || located?.plantName || path?.plant?.name,
+    sectionId: place.sectionId || located?.sectionId || path?.section?.id,
+    sectionName: place.sectionName || located?.sectionName || path?.section?.name,
+    areaId: located?.areaId || path?.areaId || place.areaId,
+    areaName: place.areaName || located?.areaName || path?.area?.label,
+    equipmentId: located?.equipmentId || place.equipmentId,
+    equipmentTag: place.equipmentTag || located?.equipmentTag,
+    equipmentName: place.equipmentName || located?.equipmentName,
+    commonId: located?.commonId || place.commonId,
+    commonTag: place.commonTag || located?.commonTag,
+    commonName: place.commonName || located?.commonName,
   };
 }
 
@@ -151,11 +223,15 @@ function asFile(photo: PhotoMeta): AlbumFile {
   };
 }
 
-function equipKey(photo: PhotoMeta) {
-  if (photo.commonId || photo.commonTag) {
-    return `common:${photo.commonId || slugSegment(photo.commonTag || "common")}`;
-  }
-  return photo.equipmentId || slugSegment(photo.equipmentTag || "equip");
+function photoAreaId(catalogue: Catalogue, photo: PhotoMeta) {
+  return locateEquipment(catalogue, photo.equipmentId, photo.commonId)?.areaId || photo.areaId;
+}
+
+function photoVisible(photo: PhotoMeta, catalogue: Catalogue, user: PublicUser) {
+  if (photo.kind === "selfie") return user.role === "admin" || photo.uploadedBy === user.id;
+  const areaId = photoAreaId(catalogue, photo);
+  if (!areaId) return user.role === "admin";
+  return canSeeArea(user, catalogue, areaId);
 }
 
 export function buildAlbumTree(
@@ -163,12 +239,7 @@ export function buildAlbumTree(
   photos: PhotoMeta[],
   user: PublicUser
 ): AlbumPlant[] {
-  const visible = photos.filter((p) => {
-    if (p.kind === "selfie") return user.role === "admin" || p.uploadedBy === user.id;
-    const areaId = p.areaId;
-    if (!areaId) return user.role === "admin";
-    return canSeeArea(user, catalogue, areaId);
-  });
+  const visible = photos.filter((p) => photoVisible(p, catalogue, user));
 
   const plants: AlbumPlant[] = [];
 
@@ -179,7 +250,9 @@ export function buildAlbumTree(
       for (const areaId of section.areaIds) {
         if (!canSeeArea(user, catalogue, areaId)) continue;
         const day = catalogue.days[areaId];
-        const areaPhotos = visible.filter((p) => p.areaId === areaId && p.kind !== "selfie");
+        const areaPhotos = visible.filter(
+          (p) => p.kind !== "selfie" && photoAreaId(catalogue, p) === areaId
+        );
         const equipMap = new Map<string, AlbumEquipment>();
 
         for (const eq of day?.equip ?? []) {
@@ -205,20 +278,28 @@ export function buildAlbumTree(
 
         const notesKey = "_shift-notes";
         for (const photo of areaPhotos) {
-          const key =
-            photo.equipmentId || photo.equipmentTag || photo.commonId || photo.commonTag
-              ? equipKey(photo)
-              : notesKey;
+          const located = locateEquipment(catalogue, photo.equipmentId, photo.commonId);
+          const key = located?.equipmentId
+            ? located.equipmentId
+            : located?.commonId
+              ? `common:${located.commonId}`
+              : photo.equipmentId
+                ? photo.equipmentId
+                : photo.commonId
+                  ? `common:${photo.commonId}`
+                  : notesKey;
           let row = equipMap.get(key);
           if (!row) {
             row = {
               key,
-              equipmentId: photo.equipmentId,
-              tag: photo.equipmentTag || photo.commonTag || (key === notesKey ? "SHIFT" : "PHOTO"),
+              equipmentId: located?.equipmentId || photo.equipmentId,
+              tag: located?.equipmentTag || located?.commonTag || photo.equipmentTag || photo.commonTag || (key === notesKey ? "NOTES" : key),
               name:
+                located?.equipmentName ||
+                located?.commonName ||
                 photo.equipmentName ||
                 photo.commonName ||
-                (key === notesKey ? "Shift notes and handover photos" : "Other photos"),
+                (key === notesKey ? "Day notes from the round" : "Other photos"),
               photoCount: 0,
               photos: [],
             };

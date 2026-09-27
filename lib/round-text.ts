@@ -93,6 +93,12 @@ export function formatFullRound(record: Submission): string {
   }
 
   lines.push("");
+  lines.push("Day notes");
+  lines.push("─────────");
+  if (record.dayNotes?.trim()) lines.push(record.dayNotes.trim());
+  else lines.push("(none)");
+  if (record.dayPhotos?.length) lines.push(`${record.dayPhotos.length} photo(s) attached`);
+  lines.push("");
   lines.push(
     record.selfie
       ? "Technician selfie: attached"

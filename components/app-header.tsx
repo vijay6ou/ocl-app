@@ -19,7 +19,6 @@ import type { PublicUser } from "@/lib/types";
 const BASE_LINKS = [
   { href: "/days", label: "Plant" },
   { href: "/files", label: "Files" },
-  { href: "/eod", label: "Handover" },
   { href: "/history", label: "Records" },
 ];
 

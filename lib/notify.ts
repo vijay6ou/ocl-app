@@ -49,6 +49,7 @@ function collectPhotoRefs(record: Submission): PhotoRef[] {
   for (const st of Object.values(record.common)) {
     for (const p of st.photos ?? []) refs.push(p);
   }
+  for (const p of record.dayPhotos ?? []) refs.push(p);
   const seen = new Set<string>();
   return refs.filter((p) => {
     if (seen.has(p.id)) return false;

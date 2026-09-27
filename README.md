@@ -38,12 +38,11 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 
 1. Sign in with a personal account.
 2. Open an area from the plant tree. You only see plants, sections, and areas assigned to you. Material handling currently has Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher.
-3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**). Each photo is stored under **plant → section → area → motor tag**, so every shot of that machine lives in one folder.
-4. Submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord is notified (selfie included with photos and PDF). The exact submit time is stored and shown on the record, PDF, and Discord full-form message (plant local IST).
-5. Open **Files** to browse the same plant tree and open a motor’s album. Add a nameplate or defect shot from the rear camera or gallery without filling a round.
-6. At the end of the shift open **Handover**. Mix headings, notes, bullets, numbered steps, checklists, counts, times, attention callouts, spoken/dictated notes, rear-camera photos, and gallery inserts. Save a draft or hand it to the next shift.
-7. Print / save PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos).
-8. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
+3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**). Each photo is filed under that machine’s **equipment ID** in Files (plant → section → area → equipment ID).
+4. On **Summary**, write a short day note and attach photos if needed, then submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord is notified (selfie included with photos and PDF). The exact submit time is stored and shown on the record, PDF, and Discord full-form message (plant local IST).
+5. Open **Files** to browse the same plant tree and open a motor’s album (keyed by equipment ID). Round photos are already there. You can also add a nameplate or defect shot from the rear camera or gallery without filling a round.
+6. Print / save PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos and the day note).
+7. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
 
 ### Admin: plant tree, blocks, and access
 
@@ -124,8 +123,7 @@ Runtime files live in `data/` (gitignored):
 - `catalogue.json` — live checklist, seeded from `lib/seed/all-days-data.json`
 - `users.json` / `sessions.json` — PIN hashes at rest (`pinHash`); lockout after 5 failed attempts (15 minutes)
 - `submissions.json`
-- `photos.json` + `uploads/` (legacy blobs) + `media/{plant}/{section}/{area}/{tag}/` (equipment albums)
-- `eod.json` — end-of-day technician handovers
+- `photos.json` + `uploads/` (legacy blobs) + `media/{plant}/{section}/{area}/{equipmentId}/` (one folder per machine)
 - `discord-threads.json` — date → Discord thread id
 - `releases/ocl-maintenance.apk` — hosted technician app
 - `presence.json` — who is on the app (sign-in, last seen, sessions; no IP)

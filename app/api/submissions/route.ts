@@ -7,6 +7,7 @@ import { getCatalogue, getPhoto, listSubmissions, saveSubmission, verifyPin } fr
 import type {
   CommonState,
   EquipState,
+  PhotoRef,
   ShiftCode,
   Submission,
 } from "@/lib/types";
@@ -55,6 +56,7 @@ export async function GET(req: Request) {
           r.id,
           ...r.fails.map((f) => `${f.equipment} ${f.issue}`),
           ...Object.values(r.equip).map((e) => e.remarks),
+          r.dayNotes ?? "",
         ]
           .join(" ")
           .toLowerCase();
@@ -90,6 +92,8 @@ export async function POST(req: Request) {
       common?: Record<string, CommonState>;
       selfieId?: string;
       pin?: string;
+      dayNotes?: string;
+      dayPhotos?: PhotoRef[];
     };
 
     const dayKey = body.day?.trim() ?? "";
@@ -179,6 +183,8 @@ export async function POST(req: Request) {
         common: day.common,
       },
       selfie: { id: selfieId, kind: "selfie" },
+      dayNotes: (body.dayNotes ?? "").trim(),
+      dayPhotos: body.dayPhotos ?? [],
     };
 
     await saveSubmission(record);
