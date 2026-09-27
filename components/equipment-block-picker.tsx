@@ -1,16 +1,20 @@
 "use client";
 
-import { blockFamilies, type EquipmentBlock } from "@/lib/equipment-blocks";
+import { blockFamilies, type EquipmentBlock, type SuperBlock } from "@/lib/equipment-blocks";
 import { Button } from "@/components/ui/button";
 
 export function EquipmentBlockPicker({
   blocks,
+  superBlocks,
   onPick,
+  onPickSuper,
   onBlank,
   onClose,
 }: {
   blocks: EquipmentBlock[];
+  superBlocks: SuperBlock[];
   onPick: (blockId: string) => void;
+  onPickSuper: (superId: string) => void;
   onBlank: () => void;
   onClose: () => void;
 }) {
@@ -20,10 +24,10 @@ export function EquipmentBlockPicker({
       <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
         <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
           <div>
-            <h2 className="font-heading text-lg font-semibold">Add an equipment block</h2>
+            <h2 className="font-heading text-lg font-semibold">Add equipment</h2>
             <p className="text-sm text-muted-foreground">
-              Each block brings its readings and the checks for its internal parts. Edit the tag
-              and name after it lands on the form.
+              A super block drops every motor in the kit. A single type adds one card. Edit tags
+              after they land.
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -31,6 +35,33 @@ export function EquipmentBlockPicker({
           </Button>
         </div>
         <div className="space-y-5 overflow-y-auto px-4 py-3">
+          {superBlocks.length > 0 ? (
+            <section>
+              <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Super blocks
+              </h3>
+              <div className="mt-2 grid gap-2">
+                {superBlocks.map((kit) => (
+                  <button
+                    key={kit.id}
+                    type="button"
+                    onClick={() => onPickSuper(kit.id)}
+                    className="rounded-lg border border-[#d4a017]/50 px-3 py-2 text-left hover:bg-[#d4a017]/10"
+                  >
+                    <span className="block text-sm font-medium">{kit.title}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {kit.summary || `${kit.members.length} machines`}
+                    </span>
+                    <span className="mt-1 block text-xs text-[#0d2137]">
+                      {kit.members.length} motor{kit.members.length === 1 ? "" : "s"} ·{" "}
+                      {kit.members.map((m) => m.name || m.tag).filter(Boolean).join(" · ") ||
+                        "Named types from the library"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
           {families.map((group) => (
             <section key={group.family}>
               <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

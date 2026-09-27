@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import seedDays from "@/lib/seed/all-days-data.json";
 import { SEED_ACCOUNTS } from "@/lib/constants";
 import { normalizeCatalogue } from "@/lib/plant-structure";
-import { applyBlocksToCatalogue, EQUIPMENT_BLOCKS, type EquipmentBlock } from "@/lib/equipment-blocks";
+import { applyBlocksToCatalogue, EQUIPMENT_BLOCKS, type EquipmentBlock, type SuperBlock } from "@/lib/equipment-blocks";
 import { MATERIAL_HANDLING_ID, WEEKDAY_TO_AREA } from "@/lib/hierarchy";
 import {
   DEFAULT_LOCATION_WINDOW,
@@ -46,6 +46,7 @@ const LOCATIONS_FILE = path.join(DATA_DIR, "locations.json");
 const LOCATION_WINDOW_FILE = path.join(DATA_DIR, "location-window.json");
 const PRESENCE_FILE = path.join(DATA_DIR, "presence.json");
 const BLOCKS_FILE = path.join(DATA_DIR, "blocks.json");
+const SUPER_BLOCKS_FILE = path.join(DATA_DIR, "super-blocks.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -181,6 +182,9 @@ async function seedIfNeeded() {
 
   const blocksExist = await fs.access(BLOCKS_FILE).then(() => true).catch(() => false);
   if (!blocksExist) await writeJson(BLOCKS_FILE, EQUIPMENT_BLOCKS);
+
+  const superExist = await fs.access(SUPER_BLOCKS_FILE).then(() => true).catch(() => false);
+  if (!superExist) await writeJson(SUPER_BLOCKS_FILE, []);
 
   await migrateUserPins();
   await migrateUserGrants();
@@ -347,6 +351,49 @@ export async function upsertBlock(block: EquipmentBlock): Promise<EquipmentBlock
     });
     const applied = applyBlocksToCatalogue(normalizeCatalogue(raw).catalogue, next);
     await writeJson(CATALOGUE_FILE, applied.catalogue);
+    return next;
+  });
+}
+
+export async function getSuperBlocks(): Promise<SuperBlock[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    return readJson<SuperBlock[]>(SUPER_BLOCKS_FILE, []);
+  });
+}
+
+function tidySuperBlock(block: SuperBlock): SuperBlock {
+  return {
+    id: block.id,
+    title: block.title.trim(),
+    summary: (block.summary ?? "").trim(),
+    members: (block.members ?? [])
+      .map((m) => ({
+        blockId: String(m.blockId ?? "").trim(),
+        name: String(m.name ?? "").trim(),
+        tag: String(m.tag ?? "").trim().slice(0, 16),
+      }))
+      .filter((m) => m.blockId),
+  };
+}
+
+export async function saveSuperBlocks(blocks: SuperBlock[]): Promise<SuperBlock[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const next = blocks.map(tidySuperBlock);
+    await writeJson(SUPER_BLOCKS_FILE, next);
+    return next;
+  });
+}
+
+export async function upsertSuperBlock(block: SuperBlock): Promise<SuperBlock[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const current = await readJson<SuperBlock[]>(SUPER_BLOCKS_FILE, []);
+    const tidied = tidySuperBlock(block);
+    const idx = current.findIndex((b) => b.id === tidied.id);
+    const next = idx >= 0 ? current.map((b) => (b.id === tidied.id ? tidied : b)) : [...current, tidied];
+    await writeJson(SUPER_BLOCKS_FILE, next);
     return next;
   });
 }

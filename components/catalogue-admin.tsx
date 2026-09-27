@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/states";
 import { api } from "@/lib/api";
-import { instantiateFromBlock, type EquipmentBlock } from "@/lib/equipment-blocks";
+import { instantiateFromBlock, instantiateSuperBlock, type EquipmentBlock, type SuperBlock } from "@/lib/equipment-blocks";
 import { useAuth } from "@/components/auth-provider";
 import { PlantTree } from "@/components/plant-tree";
 import type {
@@ -140,12 +140,29 @@ export function CatalogueDayEditor({
   const [saving, setSaving] = useState(false);
   const [pickerAt, setPickerAt] = useState<"start" | "end" | null>(null);
   const [blocks, setBlocks] = useState<EquipmentBlock[]>([]);
+  const [superBlocks, setSuperBlocks] = useState<SuperBlock[]>([]);
+  const [copyTo, setCopyTo] = useState("");
+  const [kitTitle, setKitTitle] = useState("");
+  const [areas, setAreas] = useState<{ id: string; label: string }[]>([]);
 
   useEffect(() => {
-    void api<{ blocks: EquipmentBlock[] }>("/api/blocks")
-      .then((data) => setBlocks(data.blocks))
+    void api<{ blocks: EquipmentBlock[]; superBlocks?: SuperBlock[] }>("/api/blocks")
+      .then((data) => {
+        setBlocks(data.blocks);
+        setSuperBlocks(data.superBlocks ?? []);
+      })
       .catch(() => undefined);
-  }, []);
+    void api<{ catalogue: Catalogue }>("/api/catalogue")
+      .then((data) => {
+        setAreas(
+          Object.entries(data.catalogue.days)
+            .filter(([id]) => id !== day)
+            .map(([id, area]) => ({ id, label: area.label }))
+            .sort((a, b) => a.label.localeCompare(b.label))
+        );
+      })
+      .catch(() => undefined);
+  }, [day]);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -224,6 +241,68 @@ export function CatalogueDayEditor({
     });
   }
 
+  function insertSuper(superId: string) {
+    const at = pickerAt ?? "start";
+    setPickerAt(null);
+    const kit = superBlocks.find((s) => s.id === superId);
+    if (!kit) return;
+    setSection((prev) => {
+      if (!prev) return prev;
+      const used = new Set(prev.equip.map((e) => e.id));
+      const usedTags = new Set(prev.equip.map((e) => e.tag));
+      const placed = instantiateSuperBlock(kit, used, usedTags, blocks);
+      if (placed.length === 0) return prev;
+      return {
+        ...prev,
+        equip: at === "start" ? [...placed, ...prev.equip] : [...prev.equip, ...placed],
+      };
+    });
+    toast.success(`${kit.title} added (${kit.members.length} machines).`);
+  }
+
+  async function copyOnto() {
+    if (!copyTo) return;
+    try {
+      const data = await api<{ catalogue: Catalogue }>("/api/structure", {
+        method: "POST",
+        body: JSON.stringify({ action: "copy-area", fromId: day, toId: copyTo }),
+      });
+      const dest = data.catalogue.days[copyTo];
+      toast.success(`Copied this form onto ${dest?.label ?? "the other area"}.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not copy this form.");
+    }
+  }
+
+  async function saveAsSuper() {
+    const title = kitTitle.trim();
+    if (!title || !section) return;
+    const withTypes = section.equip.filter((e) => e.blockId);
+    if (withTypes.length === 0) {
+      toast.error("This form has no library types to bundle. Add equipment blocks first.");
+      return;
+    }
+    try {
+      const data = await api<{ superBlocks: SuperBlock[] }>("/api/super-blocks", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          summary: `${withTypes.length} machines from ${section.label}`,
+          members: withTypes.map((e) => ({
+            blockId: e.blockId,
+            name: e.name,
+            tag: e.tag,
+          })),
+        }),
+      });
+      setSuperBlocks(data.superBlocks);
+      setKitTitle("");
+      toast.success("Saved as a super block. Other areas can drop the whole kit in one tap.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the super block.");
+    }
+  }
+
   function addGroup() {
     setSection((prev) => {
       if (!prev) return prev;
@@ -251,14 +330,61 @@ export function CatalogueDayEditor({
             {areaName} — {section.formLabel}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Add an equipment block to bring its readings and internal parts. Existing tags stay
-            unless you change them.
+            Add a super block to drop every motor in a kit, or one type at a time. Copy this whole
+            form onto another area when two places are the same.
           </p>
         </div>
         <Button onClick={() => void save()} disabled={saving}>
           {saving ? "Publishing…" : "Publish to plant server"}
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Copy and reuse</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Copy this form onto</Label>
+            <div className="flex gap-2">
+              <select
+                className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-background px-2 text-sm"
+                value={copyTo}
+                onChange={(e) => setCopyTo(e.target.value)}
+              >
+                <option value="">Choose area…</option>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+              <Button type="button" variant="outline" disabled={!copyTo} onClick={() => void copyOnto()}>
+                Copy
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Replaces that area’s equipment with a clone of this form. The other area keeps its name.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Save as super block</Label>
+            <div className="flex gap-2">
+              <Input
+                value={kitTitle}
+                onChange={(e) => setKitTitle(e.target.value)}
+                placeholder="e.g. Stacker, Cement mill"
+              />
+              <Button type="button" variant="outline" disabled={!kitTitle.trim()} onClick={() => void saveAsSuper()}>
+                Save kit
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Bundles the library types on this form so another area can add them in one tap.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-[#d4a017]/40 shadow-sm">
         <CardHeader>
@@ -340,7 +466,9 @@ export function CatalogueDayEditor({
       {pickerAt ? (
         <EquipmentBlockPicker
           blocks={blocks}
+          superBlocks={superBlocks}
           onPick={(blockId) => insertEquipment(blockId)}
+          onPickSuper={(id) => insertSuper(id)}
           onBlank={() => insertEquipment(null)}
           onClose={() => setPickerAt(null)}
         />

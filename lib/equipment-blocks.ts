@@ -669,6 +669,69 @@ export function instantiateFromBlock(source: EquipmentBlock, usedIds: Set<string
   };
 }
 
+export type SuperBlockMember = {
+  blockId: string;
+  name: string;
+  tag: string;
+};
+
+export type SuperBlock = {
+  id: string;
+  title: string;
+  summary: string;
+  members: SuperBlockMember[];
+};
+
+export function instantiateSuperBlock(
+  kit: SuperBlock,
+  usedIds: Set<string>,
+  usedTags: Set<string>,
+  library: EquipmentBlock[]
+): Equipment[] {
+  const placed: Equipment[] = [];
+  for (const member of kit.members) {
+    const source = equipmentBlock(member.blockId, library);
+    if (!source) continue;
+    const eq = instantiateFromBlock(source, usedIds);
+    usedIds.add(eq.id);
+    const name = member.name.trim() || source.defaultName;
+    let tag = (member.tag.trim() || source.defaultTag).slice(0, 16);
+    if (!tag) tag = source.defaultTag;
+    if (usedTags.has(tag)) {
+      let n = 2;
+      let next = `${tag}-${n}`.slice(0, 16);
+      while (usedTags.has(next) && n < 50) {
+        n += 1;
+        next = `${tag}-${n}`.slice(0, 16);
+      }
+      tag = next;
+    }
+    usedTags.add(tag);
+    placed.push({ ...eq, name, tag });
+  }
+  return placed;
+}
+
+export function superBlockFromEquipment(
+  title: string,
+  summary: string,
+  equip: Equipment[],
+  id: string
+): SuperBlock {
+  return {
+    id,
+    title,
+    summary,
+    members: equip
+      .filter((e) => Boolean(e.blockId))
+      .map((e) => ({
+        blockId: e.blockId as string,
+        name: e.name,
+        tag: e.tag,
+      })),
+  };
+}
+
 export function instantiateBlock(
   blockId: string,
   usedIds: Set<string>,

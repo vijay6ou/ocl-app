@@ -45,9 +45,9 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 
 ### Admin: plant tree, blocks, and access
 
-1. Sign in as admin and open **Catalogue**. The tree is plant → section → area. Add empty plants, sections, and areas from the tree.
-2. Open an area to edit its form. **Add equipment block** inserts a card from the **Blocks** library.
-3. Open **Blocks** to edit a type or add a new one. Saving a block updates every working form that already uses it. Submitted records stay frozen.
+1. Sign in as admin and open **Catalogue**. The tree is plant → section → area. Add empty plants, sections, and areas from the tree. **Copy** on an area duplicates it (Cement mill 1 → Cement mill 2) or copies its motors onto another area. **Copy** on a section clones every area in that section.
+2. Open an area to edit its form. **Add equipment block** can drop a **super block** (a stacker of five motors) or one type. **Save as super block** bundles the current form’s types for reuse.
+3. Open **Blocks** to edit a type, add a type, or build a super block from types. Saving a type updates every working form that already uses it. Submitted records stay frozen.
 4. Open **People** → **Locations** to assign a technician a whole plant, a section, or named areas (more than one is allowed).
 
 ### Admin: add a parameter column

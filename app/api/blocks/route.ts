@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { jsonError, requireRole, requireUser } from "@/lib/auth";
 import { EQUIPMENT_BLOCKS, type EquipmentBlock } from "@/lib/equipment-blocks";
 import { isSafeSectionId, newPlantId } from "@/lib/section-ids";
-import { getBlocks, getCatalogue, saveBlocks, upsertBlock } from "@/lib/store";
+import { getBlocks, getCatalogue, getSuperBlocks, saveBlocks, upsertBlock } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     await requireUser();
-    const blocks = await getBlocks();
-    return NextResponse.json({ blocks });
+    const [blocks, superBlocks] = await Promise.all([getBlocks(), getSuperBlocks()]);
+    return NextResponse.json({ blocks, superBlocks });
   } catch (err) {
     return jsonError(err);
   }

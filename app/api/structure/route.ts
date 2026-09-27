@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireRole } from "@/lib/auth";
 import { badgeFromName, emptyArea, newPlantId } from "@/lib/hierarchy";
+import { cloneAreaContents } from "@/lib/structure-copy";
 import { getCatalogue, saveCatalogue } from "@/lib/store";
 import { validatePlantCatalogue } from "@/lib/validate";
 
@@ -14,7 +15,10 @@ type Body =
   | { action: "rename-section"; id: string; name: string }
   | { action: "remove-plant"; id: string }
   | { action: "remove-section"; id: string }
-  | { action: "remove-area"; id: string };
+  | { action: "remove-area"; id: string }
+  | { action: "copy-area"; fromId: string; toId: string }
+  | { action: "duplicate-area"; fromId: string; sectionId: string; name: string }
+  | { action: "duplicate-section"; fromId: string; name: string };
 
 export async function POST(req: Request) {
   try {
@@ -96,6 +100,61 @@ export async function POST(req: Request) {
       const { [body.id]: _drop, ...rest } = days;
       void _drop;
       days = rest;
+    } else if (body.action === "copy-area") {
+      const from = days[body.fromId];
+      const to = days[body.toId];
+      if (!from || !to) return NextResponse.json({ error: "Unknown area." }, { status: 400 });
+      if (body.fromId === body.toId) {
+        return NextResponse.json({ error: "Pick a different area to copy onto." }, { status: 400 });
+      }
+      days[body.toId] = cloneAreaContents(from, {
+        label: to.label,
+        formLabel: to.formLabel,
+        badge: to.badge,
+        blurb: to.blurb,
+      });
+    } else if (body.action === "duplicate-area") {
+      const name = body.name?.trim();
+      if (!name) return NextResponse.json({ error: "Area name is required." }, { status: 400 });
+      const from = days[body.fromId];
+      const section = sections.find((s) => s.id === body.sectionId);
+      if (!from || !section) return NextResponse.json({ error: "Unknown area or section." }, { status: 400 });
+      const id = newPlantId(name, used, "area");
+      days[id] = cloneAreaContents(from, {
+        label: name,
+        formLabel: `${section.name} – ${name}`,
+        badge: badgeFromName(name),
+        blurb: from.blurb,
+      });
+      section.areaIds.push(id);
+    } else if (body.action === "duplicate-section") {
+      const name = body.name?.trim();
+      if (!name) return NextResponse.json({ error: "Section name is required." }, { status: 400 });
+      const from = sections.find((s) => s.id === body.fromId);
+      if (!from) return NextResponse.json({ error: "Unknown section." }, { status: 400 });
+      const sectionId = newPlantId(name, used, "section");
+      used.add(sectionId);
+      const areaIds: string[] = [];
+      for (const sourceId of from.areaIds) {
+        const source = days[sourceId];
+        if (!source) continue;
+        const areaId = newPlantId(`${name}-${source.label}`, used, "area");
+        used.add(areaId);
+        days[areaId] = cloneAreaContents(source, {
+          label: source.label,
+          formLabel: `${name} – ${source.label}`,
+          badge: source.badge || badgeFromName(source.label),
+          blurb: source.blurb,
+        });
+        areaIds.push(areaId);
+      }
+      sections.push({
+        id: sectionId,
+        plantId: from.plantId,
+        name,
+        blurb: from.blurb ?? "",
+        areaIds,
+      });
     } else {
       return NextResponse.json({ error: "Unknown action." }, { status: 400 });
     }

@@ -63,6 +63,10 @@ export function PlantTree({
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(catalogue.sections.map((s) => [s.id, true]))
   );
+  const [copyArea, setCopyArea] = useState<string | null>(null);
+  const [copySection, setCopySection] = useState<string | null>(null);
+  const [copyName, setCopyName] = useState("");
+  const [copyOnto, setCopyOnto] = useState("");
 
   async function structure(body: Record<string, string>) {
     try {
@@ -72,8 +76,10 @@ export function PlantTree({
       });
       onCatalogue?.(data.catalogue);
       toast.success("Plant structure updated.");
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update the plant.");
+      return false;
     }
   }
 
@@ -141,6 +147,19 @@ export function PlantTree({
                               <Layers className="size-3.5 shrink-0 opacity-80" />
                               <span className="truncate">{section.name}</span>
                             </span>
+                            {admin ? (
+                              <button
+                                type="button"
+                                className="shrink-0 rounded px-1.5 py-1 text-[10px] uppercase tracking-wide text-white/70 hover:bg-white/10 hover:text-white"
+                                onClick={() => {
+                                  setCopyArea(null);
+                                  setCopySection(section.id);
+                                  setCopyName("");
+                                }}
+                              >
+                                Copy
+                              </button>
+                            ) : null}
                           </div>
                           {secOpen
                             ? areas.map((id) => {
@@ -148,27 +167,157 @@ export function PlantTree({
                                 if (!area) return null;
                                 const n = area.equip.length;
                                 return (
-                                  <button
-                                    key={id}
-                                    type="button"
-                                    onClick={() => openArea(id)}
-                                    className="ml-7 flex w-[calc(100%-1.75rem)] items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
-                                  >
-                                    <MapPin className="size-3.5 shrink-0 opacity-80" />
-                                    <span className="min-w-0 truncate">{area.label}</span>
-                                    <span className="ml-auto text-[10px] text-white/50">
-                                      {n === 0 ? "empty" : n}
-                                    </span>
-                                  </button>
+                                  <div key={id} className="ml-7">
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => openArea(id)}
+                                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
+                                      >
+                                        <MapPin className="size-3.5 shrink-0 opacity-80" />
+                                        <span className="min-w-0 truncate">{area.label}</span>
+                                        <span className="ml-auto text-[10px] text-white/50">
+                                          {n === 0 ? "empty" : n}
+                                        </span>
+                                      </button>
+                                      {admin ? (
+                                        <button
+                                          type="button"
+                                          className="shrink-0 rounded px-1.5 py-1 text-[10px] uppercase tracking-wide text-white/70 hover:bg-white/10 hover:text-white"
+                                          onClick={() => {
+                                            setCopySection(null);
+                                            setCopyArea(id);
+                                            setCopyName("");
+                                            setCopyOnto("");
+                                          }}
+                                        >
+                                          Copy
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                    {admin && copyArea === id ? (
+                                      <div className="mt-1 mb-2 space-y-1.5 rounded-lg bg-white p-2 text-foreground">
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Duplicate this area, or replace another area’s form with this one.
+                                        </p>
+                                        <div className="flex gap-1">
+                                          <Input
+                                            value={copyName}
+                                            onChange={(e) => setCopyName(e.target.value)}
+                                            placeholder="Cement mill 2"
+                                            className="h-7 text-xs"
+                                          />
+                                          <Button
+                                            type="button"
+                                            size="xs"
+                                            disabled={!copyName.trim()}
+                                            onClick={() => {
+                                              void structure({
+                                                action: "duplicate-area",
+                                                fromId: id,
+                                                sectionId: section.id,
+                                                name: copyName.trim(),
+                                              }).then(() => {
+                                                setCopyArea(null);
+                                                setCopyName("");
+                                              });
+                                            }}
+                                          >
+                                            Duplicate
+                                          </Button>
+                                        </div>
+                                        <div className="flex gap-1">
+                                          <select
+                                            className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs"
+                                            value={copyOnto}
+                                            onChange={(e) => setCopyOnto(e.target.value)}
+                                          >
+                                            <option value="">Copy onto…</option>
+                                            {Object.entries(catalogue.days)
+                                              .filter(([otherId]) => otherId !== id)
+                                              .map(([otherId, other]) => (
+                                                <option key={otherId} value={otherId}>
+                                                  {other.label}
+                                                </option>
+                                              ))}
+                                          </select>
+                                          <Button
+                                            type="button"
+                                            size="xs"
+                                            variant="outline"
+                                            disabled={!copyOnto}
+                                            onClick={() => {
+                                              void structure({
+                                                action: "copy-area",
+                                                fromId: id,
+                                                toId: copyOnto,
+                                              }).then(() => {
+                                                setCopyArea(null);
+                                                setCopyOnto("");
+                                              });
+                                            }}
+                                          >
+                                            Onto
+                                          </Button>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="text-[11px] text-muted-foreground"
+                                          onClick={() => setCopyArea(null)}
+                                        >
+                                          Close
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 );
                               })
                             : null}
+                          {admin && copySection === section.id ? (
+                            <div className="ml-10 mt-1 mb-2 space-y-1.5 rounded-lg bg-white p-2 text-foreground">
+                              <p className="text-[11px] text-muted-foreground">
+                                Duplicate this whole section (every area and its motors) with a new name.
+                              </p>
+                              <div className="flex gap-1">
+                                <Input
+                                  value={copyName}
+                                  onChange={(e) => setCopyName(e.target.value)}
+                                  placeholder="Cement mill 2"
+                                  className="h-7 text-xs"
+                                />
+                                <Button
+                                  type="button"
+                                  size="xs"
+                                  disabled={!copyName.trim()}
+                                  onClick={() => {
+                                    void structure({
+                                      action: "duplicate-section",
+                                      fromId: section.id,
+                                      name: copyName.trim(),
+                                    }).then(() => {
+                                      setCopySection(null);
+                                      setCopyName("");
+                                    });
+                                  }}
+                                >
+                                  Duplicate
+                                </Button>
+                              </div>
+                              <button
+                                type="button"
+                                className="text-[11px] text-muted-foreground"
+                                onClick={() => setCopySection(null)}
+                              >
+                                Close
+                              </button>
+                            </div>
+                          ) : null}
                           {admin && secOpen ? (
                             <div className="ml-10 mt-1 mb-2 rounded-lg bg-white p-1.5 text-foreground">
                               <NameAdd
                                 placeholder="New area"
                                 label="Add"
-                                onAdd={(name) => structure({ action: "add-area", sectionId: section.id, name })}
+                                onAdd={(name) => void structure({ action: "add-area", sectionId: section.id, name })}
                               />
                             </div>
                           ) : null}
@@ -181,7 +330,7 @@ export function PlantTree({
                     <NameAdd
                       placeholder="New section"
                       label="Add"
-                      onAdd={(name) => structure({ action: "add-section", plantId: plant.id, name })}
+                      onAdd={(name) => void structure({ action: "add-section", plantId: plant.id, name })}
                     />
                   </div>
                 ) : null}
@@ -194,7 +343,7 @@ export function PlantTree({
                 <NameAdd
                   placeholder="New plant"
                   label="Add"
-                  onAdd={(name) => structure({ action: "add-plant", name })}
+                  onAdd={(name) => void structure({ action: "add-plant", name })}
                 />
               </div>
             </div>
@@ -210,7 +359,7 @@ export function PlantTree({
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
           {mode === "admin"
-            ? "Add empty plants and sections when you need them. Open an area to edit its equipment. Equipment blocks live in a separate library."
+            ? "Add empty plants and sections when you need them. Open an area to edit its equipment. Copy Cement mill 1 onto Cement mill 2, or drop a super block (a stacker with five motors) from the block library."
             : "Open an area in the tree. You only see the plants, sections, and areas assigned to you."}
         </p>
         {mode === "admin" ? (
