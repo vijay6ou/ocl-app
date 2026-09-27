@@ -28,13 +28,11 @@ import {
   SHIFT_OPTIONS,
   type Catalogue,
   type CommonState,
-  type DayKey,
   type DraftState,
   type EquipState,
   type Equipment,
   type ShiftCode,
 } from "@/lib/types";
-import { isDayKey } from "@/lib/validate";
 import { cn } from "@/lib/utils";
 
 type Pane = "equipment" | "common" | "summary" | "update";
@@ -45,7 +43,7 @@ function todayISO() {
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 10);
 }
 
-function localDraftKey(userId: string, day: DayKey) {
+function localDraftKey(userId: string, day: string) {
   return `ocl-draft-v1:${userId}:${day}`;
 }
 
@@ -106,14 +104,9 @@ export function ChecklistForm({
   const hydrated = useRef(false);
   const skipNextSave = useRef(true);
 
-  const dayKey = isDayKey(day) ? day : null;
+  const dayKey = day;
 
   const load = useCallback(async () => {
-    if (!dayKey) {
-      setError("There is no Sunday round. Pick Monday–Saturday.");
-      setLoading(false);
-      return;
-    }
     setError(null);
     try {
       const data = await api<{ catalogue: Catalogue }>("/api/catalogue");
@@ -125,7 +118,7 @@ export function ChecklistForm({
     } finally {
       setLoading(false);
     }
-  }, [dayKey, initialCatalogue]);
+  }, [initialCatalogue]);
 
   useEffect(() => {
     if (initialCatalogue) return;

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/auth";
-import { findLocationPing, saveLocationPing } from "@/lib/store";
+import { findLocationPing, getLocationWindow, saveLocationPing } from "@/lib/store";
 import { buildLocationPing, notifyLocationDiscord } from "@/lib/location-notify";
+import { isInsideLocationWindow } from "@/lib/location-window";
 import { plantSlotKey } from "@/lib/submit-time";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,14 @@ export async function POST(req: Request) {
     const lng = Number(body.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
       return NextResponse.json({ error: "Coordinates are required." }, { status: 400 });
+    }
+    const window = await getLocationWindow();
+    if (!isInsideLocationWindow(window)) {
+      return NextResponse.json({
+        ok: true,
+        skipped: "outside-window",
+        window,
+      });
     }
     const slot = plantSlotKey();
     const existing = await findLocationPing(user.id, slot);

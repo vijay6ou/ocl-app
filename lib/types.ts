@@ -14,6 +14,8 @@ export type Equipment = {
   tag: string;
   name: string;
   isHT: boolean;
+  /** Catalogue block this card was created from, when it was not a blank card. */
+  blockId?: string;
   runningParams: RunningParam[];
   runningChecks: string[];
   stoppedChecks: string[];
@@ -37,15 +39,27 @@ export type CommonGroup = {
 export type DayCatalogue = {
   label: string;
   formLabel: string;
+  /** Short card badge, for example Mon or Fan. */
+  badge?: string;
+  blurb?: string;
   equip: Equipment[];
   common: CommonGroup[];
 };
 
-export type DaysData = Record<DayKey, DayCatalogue>;
+/** One process area of the plant. Material handling is the original weekday round. */
+export type PlantArea = {
+  id: string;
+  name: string;
+  blurb: string;
+  sectionIds: string[];
+};
+
+export type DaysData = Record<string, DayCatalogue>;
 
 export type Catalogue = {
   version: string;
   updatedAt: string;
+  areas: PlantArea[];
   days: DaysData;
 };
 
@@ -142,8 +156,11 @@ export type SubmissionMeta = {
   tech: string;
   sup: string;
   form: string;
-  day: DayKey;
+  /** Subsection id. The original material-handling rounds keep mon–sat. */
+  day: string;
   dayLabel: string;
+  areaId?: string;
+  areaName?: string;
   pct: number;
   done: number;
   total: number;
@@ -205,7 +222,7 @@ export type PresenceSession = {
 };
 
 export type DraftState = {
-  day: DayKey;
+  day: string;
   savedAt: string;
   meta: {
     date: string;

@@ -4,7 +4,22 @@ import { useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
 import { msUntilNextPlantSlot, plantSlotKey } from "@/lib/submit-time";
+import type { LocationWindow } from "@/lib/location-window";
 import { isOclNative } from "@/lib/print-native";
+
+async function readWindow() {
+  try {
+    const data = await api<{ window: LocationWindow; open: boolean }>("/api/location/window");
+    try {
+      window.OCLNative?.setLocationWindow?.(data.window.start, data.window.end, data.window.enabled);
+    } catch {
+      /* browser */
+    }
+    return data.open;
+  } catch {
+    return true;
+  }
+}
 
 function postFix(lat: number, lng: number, accuracy?: number) {
   return api<{ ok?: boolean; slot?: string }>("/api/location", {
@@ -57,7 +72,9 @@ export function LocationPing() {
     }
 
     let lastSlot = "";
-    function sendOnce() {
+    async function sendOnce() {
+      const open = await readWindow();
+      if (!open) return;
       const slot = plantSlotKey();
       if (lastSlot === slot) return;
       if (isOclNative() && nativeHasPermission()) {

@@ -382,7 +382,10 @@ public class MainActivity extends Activity {
                 notifyCaptureReady();
             }
         }
-        if (requestCode == LocationHelper.REQ_LOCATION && locationHelper != null) {
+        if ((requestCode == LocationHelper.REQ_LOCATION
+                || requestCode == LocationHelper.REQ_BACKGROUND
+                || requestCode == LocationHelper.REQ_NOTIFICATION)
+                && locationHelper != null) {
             locationHelper.onPermissionResult();
         }
     }
@@ -734,6 +737,16 @@ public class MainActivity extends Activity {
         public void pingLocationNow() {
             runOnUiThread(() -> {
                 if (locationHelper != null) locationHelper.pingNow();
+            });
+        }
+
+        @JavascriptInterface
+        public void setLocationWindow(String start, String end, boolean enabled) {
+            LocationService.saveWindow(MainActivity.this, start, end, enabled);
+            runOnUiThread(() -> {
+                if (locationHelper != null && locationHelper.hasPermission()) {
+                    LocationService.start(MainActivity.this);
+                }
             });
         }
 

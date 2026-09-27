@@ -12,6 +12,7 @@ export type OclNative = {
   hasLocationPermission?: () => boolean;
   getLocation?: () => string;
   pingLocationNow?: () => void;
+  setLocationWindow?: (start: string, end: string, enabled: boolean) => void;
 };
 
 declare global {

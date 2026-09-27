@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/states";
 import { getCurrentUser } from "@/lib/auth";
-import { listSubmissions } from "@/lib/store";
-import { DAY_KEYS } from "@/lib/constants";
-import { SHIFT_OPTIONS, type DayKey } from "@/lib/types";
+import { getCatalogue, listSubmissions } from "@/lib/store";
+import { SHIFT_OPTIONS } from "@/lib/types";
 import { defaultHistoryRange, formatSubmitTimestamp, recordInDateRange, submitInstant } from "@/lib/submit-time";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +27,7 @@ export default async function HistoryPage({
   const to = String(sp.to ?? range.to);
   const failures = sp.failures === "1" || sp.failures === "on";
 
+  const catalogue = await getCatalogue();
   let rows = await listSubmissions();
   rows = rows.filter((r) => recordInDateRange(r, from, to));
   if (day) rows = rows.filter((r) => r.meta.day === day);
@@ -74,11 +74,15 @@ export default async function HistoryPage({
           defaultValue={day}
           className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
         >
-          <option value="">All sections</option>
-          {DAY_KEYS.map((k: DayKey) => (
-            <option key={k} value={k}>
-              {k.toUpperCase()}
-            </option>
+          <option value="">All subsections</option>
+          {catalogue.areas.map((area) => (
+            <optgroup key={area.id} label={area.name}>
+              {area.sectionIds.map((id) => (
+                <option key={id} value={id}>
+                  {catalogue.days[id]?.label ?? id}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <select

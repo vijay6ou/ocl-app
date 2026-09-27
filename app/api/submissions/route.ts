@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/auth";
 import { notifySubmission } from "@/lib/notify";
+import { findArea, isSafeSectionId } from "@/lib/plant-structure";
 import { getCatalogue, getPhoto, listSubmissions, saveSubmission, verifyPin } from "@/lib/store";
-import { DAY_KEYS } from "@/lib/types";
 import type {
   CommonState,
-  DayKey,
   EquipState,
   ShiftCode,
   Submission,
@@ -36,7 +35,7 @@ export async function GET(req: Request) {
     const fromDate = from && from.trim() ? from : range.from;
     const toDate = to && to.trim() ? to : range.to;
     rows = rows.filter((r) => recordInDateRange(r, fromDate, toDate));
-    if (day && (DAY_KEYS as readonly string[]).includes(day)) {
+    if (day && isSafeSectionId(day)) {
       rows = rows.filter((r) => r.meta.day === day);
     }
     if (shift) rows = rows.filter((r) => r.meta.shift === shift);
@@ -78,7 +77,7 @@ export async function POST(req: Request) {
   try {
     const user = await requireUser();
     const body = (await req.json()) as {
-      day?: DayKey;
+      day?: string;
       date?: string;
       shift?: ShiftCode;
       sup?: string;
@@ -88,12 +87,9 @@ export async function POST(req: Request) {
       pin?: string;
     };
 
-    const dayKey = body.day;
-    if (!dayKey || !(DAY_KEYS as readonly string[]).includes(dayKey)) {
-      return NextResponse.json(
-        { error: "Pick a plant section (Monday–Saturday)." },
-        { status: 400 }
-      );
+    const dayKey = body.day?.trim() ?? "";
+    if (!isSafeSectionId(dayKey)) {
+      return NextResponse.json({ error: "Pick a plant subsection." }, { status: 400 });
     }
     const date = body.date?.trim() ?? "";
     const shift = body.shift;
@@ -128,6 +124,10 @@ export async function POST(req: Request) {
 
     const catalogue = await getCatalogue();
     const day = catalogue.days[dayKey];
+    if (!day) {
+      return NextResponse.json({ error: "That subsection is not on the plant catalogue." }, { status: 400 });
+    }
+    const area = findArea(catalogue, dayKey);
     const equip = body.equip ?? {};
     const common = body.common ?? {};
     const progress = progressForDay(day, equip, common);
@@ -150,6 +150,8 @@ export async function POST(req: Request) {
         form: day.formLabel,
         day: dayKey,
         dayLabel: day.label,
+        areaId: area?.id,
+        areaName: area?.name,
         pct: progress.pct,
         done: progress.done,
         total: progress.total,

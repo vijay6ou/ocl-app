@@ -3,16 +3,22 @@ import path from "path";
 import bcrypt from "bcryptjs";
 import seedDays from "@/lib/seed/all-days-data.json";
 import { SEED_ACCOUNTS } from "@/lib/constants";
+import { normalizeCatalogue } from "@/lib/plant-structure";
+import {
+  DEFAULT_LOCATION_WINDOW,
+  normalizeLocationWindow,
+  type LocationWindow,
+} from "@/lib/location-window";
 import { isFourDigitPin, PIN_LOCK_MS, PIN_MAX_FAILS, SEED_PINS } from "@/lib/seed-pins";
 import { bakeUprightImage } from "@/lib/image-orient";
 import { recordInDateRange } from "@/lib/submit-time";
 import type {
   Catalogue,
-  DayKey,
   DaysData,
   DraftState,
   LocationPing,
   PhotoMeta,
+  PlantArea,
   PresenceSession,
   PublicUser,
   SessionRecord,
@@ -33,6 +39,7 @@ const DRAFTS_FILE = path.join(DATA_DIR, "drafts.json");
 const DISCORD_THREADS_FILE = path.join(DATA_DIR, "discord-threads.json");
 const LOCATION_DISCORD_THREADS_FILE = path.join(DATA_DIR, "location-discord-threads.json");
 const LOCATIONS_FILE = path.join(DATA_DIR, "locations.json");
+const LOCATION_WINDOW_FILE = path.join(DATA_DIR, "location-window.json");
 const PRESENCE_FILE = path.join(DATA_DIR, "presence.json");
 
 type FileStore = {
@@ -83,12 +90,12 @@ async function seedIfNeeded() {
 
   if (!catalogueExists) {
     const now = new Date().toISOString();
-    const catalogue: Catalogue = {
+    const seeded = normalizeCatalogue({
       version: now,
       updatedAt: now,
       days: seedDays as DaysData,
-    };
-    await writeJson(CATALOGUE_FILE, catalogue);
+    });
+    await writeJson(CATALOGUE_FILE, seeded.catalogue);
   }
 
   const usersExist = await fs
@@ -161,6 +168,12 @@ async function seedIfNeeded() {
     .catch(() => false);
   if (!presenceExist) await writeJson(PRESENCE_FILE, []);
 
+  const windowExist = await fs
+    .access(LOCATION_WINDOW_FILE)
+    .then(() => true)
+    .catch(() => false);
+  if (!windowExist) await writeJson(LOCATION_WINDOW_FILE, DEFAULT_LOCATION_WINDOW);
+
   await migrateUserPins();
 }
 
@@ -191,18 +204,21 @@ async function migrateUserPins() {
 
 async function loadAll(): Promise<FileStore> {
   await seedIfNeeded();
-  const [catalogue, users, sessions, submissions, photos] = await Promise.all([
-    readJson<Catalogue>(CATALOGUE_FILE, {
-      version: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      days: seedDays as DaysData,
-    }),
+  const rawCatalogue = await readJson<Catalogue>(CATALOGUE_FILE, {
+    version: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    areas: [],
+    days: seedDays as DaysData,
+  });
+  const normalized = normalizeCatalogue(rawCatalogue);
+  if (normalized.migrated) await writeJson(CATALOGUE_FILE, normalized.catalogue);
+  const [users, sessions, submissions, photos] = await Promise.all([
     readJson<UserRecord[]>(USERS_FILE, []),
     readJson<SessionRecord[]>(SESSIONS_FILE, []),
     readJson<Submission[]>(SUBMISSIONS_FILE, []),
     readJson<PhotoMeta[]>(PHOTOS_FILE, []),
   ]);
-  return { catalogue, users, sessions, submissions, photos };
+  return { catalogue: normalized.catalogue, users, sessions, submissions, photos };
 }
 
 export function publicUser(user: UserRecord): PublicUser {
@@ -219,10 +235,16 @@ export async function getCatalogue() {
   return withLock(async () => (await loadAll()).catalogue);
 }
 
-export async function saveCatalogue(days: DaysData) {
+export async function saveCatalogue(days: DaysData, areas?: PlantArea[]) {
   return withLock(async () => {
+    const current = await loadAll();
     const now = new Date().toISOString();
-    const catalogue: Catalogue = { version: now, updatedAt: now, days };
+    const catalogue: Catalogue = {
+      version: now,
+      updatedAt: now,
+      areas: areas ?? current.catalogue.areas,
+      days,
+    };
     await writeJson(CATALOGUE_FILE, catalogue);
     return catalogue;
   });
@@ -495,11 +517,11 @@ export async function getPhoto(id: string) {
   });
 }
 
-function draftKey(userId: string, day: DayKey) {
+function draftKey(userId: string, day: string) {
   return `${userId}:${day}`;
 }
 
-export async function getDraft(userId: string, day: DayKey): Promise<DraftState | null> {
+export async function getDraft(userId: string, day: string): Promise<DraftState | null> {
   return withLock(async () => {
     await seedIfNeeded();
     const all = await readJson<Record<string, DraftState>>(DRAFTS_FILE, {});
@@ -518,7 +540,7 @@ export async function saveDraft(userId: string, draft: DraftState): Promise<Draf
   });
 }
 
-export async function deleteDraft(userId: string, day: DayKey) {
+export async function deleteDraft(userId: string, day: string) {
   return withLock(async () => {
     await seedIfNeeded();
     const all = await readJson<Record<string, DraftState>>(DRAFTS_FILE, {});
@@ -579,6 +601,35 @@ export async function findLocationPing(userId: string, slot: string) {
     await seedIfNeeded();
     const all = await readJson<LocationPing[]>(LOCATIONS_FILE, []);
     return all.find((p) => p.userId === userId && p.slot === slot) ?? null;
+  });
+}
+
+export async function latestLocationByUser() {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<LocationPing[]>(LOCATIONS_FILE, []);
+    const map: Record<string, LocationPing> = {};
+    for (const ping of all) {
+      if (!map[ping.userId]) map[ping.userId] = ping;
+    }
+    return map;
+  });
+}
+
+export async function getLocationWindow() {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const raw = await readJson<LocationWindow>(LOCATION_WINDOW_FILE, DEFAULT_LOCATION_WINDOW);
+    return normalizeLocationWindow(raw);
+  });
+}
+
+export async function saveLocationWindow(input: LocationWindow) {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const window = normalizeLocationWindow(input);
+    await writeJson(LOCATION_WINDOW_FILE, window);
+    return window;
   });
 }
 

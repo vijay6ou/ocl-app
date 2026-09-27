@@ -16,14 +16,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/states";
 import { api } from "@/lib/api";
-import { DAY_BLURBS, DAY_KEYS } from "@/lib/constants";
+import { DAY_KEYS } from "@/lib/constants";
+import { equipmentBlock, instantiateBlock } from "@/lib/equipment-blocks";
+import { MATERIAL_HANDLING_ID, newPlantId } from "@/lib/section-ids";
 import type {
   Catalogue,
   CommonGroup,
   CommonItem,
   DayCatalogue,
-  DayKey,
   Equipment,
+  PlantArea,
   RunningParam,
 } from "@/lib/types";
 import {
@@ -32,6 +34,7 @@ import {
   newGroupId,
   newParamId,
 } from "@/lib/validate";
+import { EquipmentBlockPicker } from "@/components/equipment-block-picker";
 
 function moveItem<T>(items: T[], index: number, dir: -1 | 1) {
   const next = index + dir;
@@ -83,6 +86,10 @@ export function CatalogueHome({ initial }: { initial?: Catalogue } = {}) {
   const [catalogue, setCatalogue] = useState<Catalogue | null>(initial ?? null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!initial);
+  const [saving, setSaving] = useState(false);
+  const [areaName, setAreaName] = useState("");
+  const [areaSection, setAreaSection] = useState("");
+  const [sectionName, setSectionName] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setError(null);
@@ -101,60 +108,288 @@ export function CatalogueHome({ initial }: { initial?: Catalogue } = {}) {
     void load();
   }, [load, initial]);
 
+  async function publish(next: Catalogue, message: string) {
+    setSaving(true);
+    try {
+      const data = await api<{ catalogue: Catalogue }>("/api/catalogue", {
+        method: "PUT",
+        body: JSON.stringify({ days: next.days, areas: next.areas }),
+      });
+      setCatalogue(data.catalogue);
+      toast.success(message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not publish the plant structure.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function addArea() {
+    if (!catalogue) return;
+    const name = areaName.trim();
+    const section = areaSection.trim();
+    if (!name || !section) {
+      toast.error("Name the area and its first subsection.");
+      return;
+    }
+    const areaId = newPlantId(name, new Set(catalogue.areas.map((area) => area.id)), "area");
+    const sectionId = newPlantId(section, new Set(Object.keys(catalogue.days)), "section");
+    const row: DayCatalogue = {
+      label: section,
+      formLabel: `${name} – ${section}`,
+      badge: section.slice(0, 4),
+      blurb: "",
+      equip: [],
+      common: [],
+    };
+    const area: PlantArea = { id: areaId, name, blurb: "", sectionIds: [sectionId] };
+    setAreaName("");
+    setAreaSection("");
+    void publish(
+      {
+        ...catalogue,
+        areas: [...catalogue.areas, area],
+        days: { ...catalogue.days, [sectionId]: row },
+      },
+      `${name} is on the plant list.`
+    );
+  }
+
+  function addSection(area: PlantArea) {
+    if (!catalogue) return;
+    const name = (sectionName[area.id] ?? "").trim();
+    if (!name) {
+      toast.error("Name the subsection.");
+      return;
+    }
+    const sectionId = newPlantId(name, new Set(Object.keys(catalogue.days)), "section");
+    const row: DayCatalogue = {
+      label: name,
+      formLabel: `${area.name} – ${name}`,
+      badge: name.slice(0, 4),
+      blurb: "",
+      equip: [],
+      common: [],
+    };
+    setSectionName((prev) => ({ ...prev, [area.id]: "" }));
+    void publish(
+      {
+        ...catalogue,
+        areas: catalogue.areas.map((item) =>
+          item.id === area.id ? { ...item, sectionIds: [...item.sectionIds, sectionId] } : item
+        ),
+        days: { ...catalogue.days, [sectionId]: row },
+      },
+      `${name} added under ${area.name}.`
+    );
+  }
+
+  function renameArea(area: PlantArea, name: string) {
+    if (!catalogue) return;
+    const nextName = name.trim();
+    if (!nextName || nextName === area.name) return;
+    void publish(
+      {
+        ...catalogue,
+        areas: catalogue.areas.map((item) =>
+          item.id === area.id ? { ...item, name: nextName } : item
+        ),
+      },
+      "Area name published."
+    );
+  }
+
+  function removeSection(area: PlantArea, sectionId: string) {
+    if (!catalogue) return;
+    if ((DAY_KEYS as readonly string[]).includes(sectionId)) {
+      toast.error("The material-handling weekday forms stay on the catalogue.");
+      return;
+    }
+    if (area.sectionIds.length <= 1) {
+      toast.error("Add another subsection before removing this one.");
+      return;
+    }
+    const section = catalogue.days[sectionId];
+    if (!confirm(`Remove ${section?.label ?? sectionId} from ${area.name}?`)) return;
+    const days = { ...catalogue.days };
+    delete days[sectionId];
+    void publish(
+      {
+        ...catalogue,
+        areas: catalogue.areas.map((item) =>
+          item.id === area.id
+            ? { ...item, sectionIds: item.sectionIds.filter((id) => id !== sectionId) }
+            : item
+        ),
+        days,
+      },
+      "Subsection removed."
+    );
+  }
+
+  function removeArea(area: PlantArea) {
+    if (!catalogue) return;
+    if (area.id === MATERIAL_HANDLING_ID) {
+      toast.error("Material handling stays. Add subsections instead of removing the area.");
+      return;
+    }
+    if (!confirm(`Remove ${area.name} and its subsections?`)) return;
+    const days = { ...catalogue.days };
+    for (const id of area.sectionIds) {
+      if (!(DAY_KEYS as readonly string[]).includes(id)) delete days[id];
+    }
+    void publish(
+      {
+        ...catalogue,
+        areas: catalogue.areas.filter((item) => item.id !== area.id),
+        days,
+      },
+      `${area.name} removed.`
+    );
+  }
+
   if (loading) return <LoadingState label="Loading live catalogue…" />;
   if (error) return <ErrorState message={error} onRetry={() => void load()} />;
   if (!catalogue) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-semibold">Equipment catalogue</h1>
         <p className="text-sm text-muted-foreground">
-          Build each weekday like a form: add equipment, add parameter fields, add OK/FAIL
-          questions. Publish to the plant server so technicians get the new list on the next
-          load.
+          Material handling keeps the weekday forms. Add other plant areas, then give each area
+          its own subsections and open the form to drop in equipment blocks.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Last published {new Date(catalogue.updatedAt).toLocaleString()}
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {DAY_KEYS.map((key) => {
-          const day = catalogue.days[key];
-          return (
-            <Card key={key}>
-              <CardHeader>
-                <CardTitle>{DAY_BLURBS[key].weekday} – {DAY_BLURBS[key].section}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  {day.equip.length} equipment ·{" "}
-                  {day.common.reduce((n, g) => n + g.items.length, 0)} common devices
-                </p>
-                <Button render={<Link href={`/admin/catalogue/${key}`} />}>Edit form</Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+
+      {catalogue.areas.map((area) => (
+        <section key={area.id} className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-[16rem] flex-1 space-y-1.5">
+              <Label htmlFor={`area-${area.id}`}>Plant area</Label>
+              <Input
+                id={`area-${area.id}`}
+                defaultValue={area.name}
+                key={`${area.id}-${area.name}`}
+                onBlur={(e) => renameArea(area, e.target.value)}
+                disabled={saving}
+              />
+              {area.blurb ? <p className="text-sm text-muted-foreground">{area.blurb}</p> : null}
+            </div>
+            {area.id === MATERIAL_HANDLING_ID ? null : (
+              <Button variant="outline" disabled={saving} onClick={() => removeArea(area)}>
+                Remove area
+              </Button>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {area.sectionIds.map((key) => {
+              const day = catalogue.days[key];
+              if (!day) return null;
+              const locked = (DAY_KEYS as readonly string[]).includes(key);
+              return (
+                <Card key={key}>
+                  <CardHeader>
+                    <CardTitle>{day.formLabel || day.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      {day.equip.length} equipment ·{" "}
+                      {day.common.reduce((n, g) => n + g.items.length, 0)} common devices
+                    </p>
+                    <div className="flex gap-2">
+                      {locked ? null : (
+                        <Button
+                          variant="outline"
+                          disabled={saving}
+                          onClick={() => removeSection(area, key)}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                      <Button render={<Link href={`/admin/catalogue/${key}`} />}>Edit form</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={sectionName[area.id] ?? ""}
+              onChange={(e) => setSectionName((prev) => ({ ...prev, [area.id]: e.target.value }))}
+              placeholder={`New subsection in ${area.name}`}
+              disabled={saving}
+            />
+            <Button variant="outline" disabled={saving} onClick={() => addSection(area)}>
+              <Plus className="size-4" />
+              Add subsection
+            </Button>
+          </div>
+        </section>
+      ))}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add a plant area</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-area">Area name</Label>
+            <Input
+              id="new-area"
+              value={areaName}
+              onChange={(e) => setAreaName(e.target.value)}
+              placeholder="Packing plant"
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-area-section">First subsection</Label>
+            <Input
+              id="new-area-section"
+              value={areaSection}
+              onChange={(e) => setAreaSection(e.target.value)}
+              placeholder="Packer drives"
+              disabled={saving}
+            />
+          </div>
+          <Button className="sm:col-span-2 sm:w-fit" disabled={saving} onClick={addArea}>
+            <Plus className="size-4" />
+            Add area
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-export function CatalogueDayEditor({ day }: { day: DayKey }) {
-  const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
-  const [section, setSection] = useState<DayCatalogue | null>(null);
+export function CatalogueDayEditor({
+  day,
+  initialSection,
+  areaName,
+}: {
+  day: string;
+  initialSection: DayCatalogue;
+  areaName: string;
+}) {
+  const [section, setSection] = useState<DayCatalogue | null>(structuredClone(initialSection));
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pickerAt, setPickerAt] = useState<"start" | "end" | null>(null);
 
-  const load = useCallback(async () => {
+  const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await api<{ catalogue: Catalogue }>("/api/catalogue");
-      setCatalogue(data.catalogue);
-      setSection(structuredClone(data.catalogue.days[day]));
+      const next = data.catalogue.days[day];
+      setSection(next ? structuredClone(next) : null);
+      if (!next) setError("That subsection is not on the plant catalogue.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load this section.");
     } finally {
@@ -162,22 +397,17 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
     }
   }, [day]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   async function save() {
-    if (!catalogue || !section) return;
+    if (!section) return;
     setSaving(true);
     try {
-      const days = { ...catalogue.days, [day]: section };
       const data = await api<{ catalogue: Catalogue }>("/api/catalogue", {
         method: "PUT",
-        body: JSON.stringify({ days }),
+        body: JSON.stringify({ sectionId: day, section }),
       });
-      setCatalogue(data.catalogue);
-      setSection(structuredClone(data.catalogue.days[day]));
-      toast.success("Form published. Technicians pick this up the next time they open the day.");
+      const next = data.catalogue.days[day];
+      setSection(next ? structuredClone(next) : section);
+      toast.success("Form published. Technicians pick this up the next time they open the subsection.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not publish catalogue.");
     } finally {
@@ -186,7 +416,7 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
   }
 
   if (loading) return <LoadingState label="Loading section…" />;
-  if (error) return <ErrorState message={error} onRetry={() => void load()} />;
+  if (error) return <ErrorState message={error} onRetry={() => void reload()} />;
   if (!section) return null;
 
   function setEquip(equip: Equipment[]) {
@@ -201,20 +431,24 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
     );
   }
 
-  function addEquipment(at: "start" | "end" = "end") {
+  function insertEquipment(blockId: string | null) {
+    const at = pickerAt ?? "start";
+    setPickerAt(null);
     setSection((prev) => {
       if (!prev) return prev;
       const used = new Set(prev.equip.map((e) => e.id));
-      const id = newEquipmentId("new_equipment", used);
-      const next: Equipment = {
-        id,
-        tag: "NEW-TAG",
-        name: "Untitled equipment",
-        isHT: false,
-        runningParams: [],
-        runningChecks: [],
-        stoppedChecks: [],
-      };
+      const next: Equipment | null = blockId
+        ? instantiateBlock(blockId, used)
+        : {
+            id: newEquipmentId("new_equipment", used),
+            tag: "NEW-TAG",
+            name: "Untitled equipment",
+            isHT: false,
+            runningParams: [],
+            runningChecks: [],
+            stoppedChecks: [],
+          };
+      if (!next) return prev;
       return {
         ...prev,
         equip: at === "start" ? [next, ...prev.equip] : [...prev.equip, next],
@@ -243,14 +477,14 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Button variant="ghost" size="sm" render={<Link href="/admin/catalogue" />}>
-            ← All sections
+            ← All areas
           </Button>
           <h1 className="font-heading text-2xl font-semibold">
-            {DAY_BLURBS[day].weekday} – {DAY_BLURBS[day].section}
+            {areaName} — {section.formLabel}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Forms-style builder. Existing OCL ids and tags stay as they are unless you change
-            them.
+            Add an equipment block to bring its readings and internal parts. Existing tags stay
+            unless you change them.
           </p>
         </div>
         <Button onClick={() => void save()} disabled={saving}>
@@ -286,15 +520,15 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
         <Button
           variant="outline"
           data-add="equip-top"
-          onClick={() => addEquipment("start")}
+          onClick={() => setPickerAt("start")}
         >
           <Plus className="size-4" />
-          Add equipment
+          Add equipment block
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
         The button above inserts at the top of this list. The dashed control at the bottom
-        appends.
+        appends. A block includes the motor or transformer and its internal parts.
       </p>
 
       {section.equip.length === 0 ? (
@@ -303,9 +537,9 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
           <p className="mt-1 text-sm text-muted-foreground">
             Add the first machine, then attach parameter fields and OK/FAIL questions.
           </p>
-          <Button className="mt-4" onClick={() => addEquipment("start")}>
+          <Button className="mt-4" onClick={() => setPickerAt("start")}>
             <Plus className="size-4" />
-            Add equipment
+            Add equipment block
           </Button>
         </div>
       ) : (
@@ -328,12 +562,19 @@ export function CatalogueDayEditor({ day }: { day: DayKey }) {
 
       <button
         type="button"
-        onClick={() => addEquipment("end")}
+        onClick={() => setPickerAt("end")}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#d4a017]/70 bg-white px-4 py-3 text-sm font-medium text-[#0d2137] hover:bg-[#d4a017]/10"
       >
         <Plus className="size-4" />
-        Add equipment
+        Add equipment block
       </button>
+      {pickerAt ? (
+        <EquipmentBlockPicker
+          onPick={(blockId) => insertEquipment(blockId)}
+          onBlank={() => insertEquipment(null)}
+          onClose={() => setPickerAt(null)}
+        />
+      ) : null}
 
       <div className="flex items-center justify-between gap-3 pt-2">
         <h2 className="font-heading text-lg font-semibold">Common device questions</h2>
@@ -397,6 +638,7 @@ function EquipmentEditor({
   onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   function addParam(at: "start" | "end" = "end") {
     const used = new Set(item.runningParams.map((p) => p.id));
     const id = newParamId("new_reading", used);
@@ -458,6 +700,12 @@ function EquipmentEditor({
                 />
               </div>
             </div>
+            {item.blockId && equipmentBlock(item.blockId) ? (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Block: {equipmentBlock(item.blockId)?.title}. Parts:{" "}
+                {equipmentBlock(item.blockId)?.parts.join(" · ")}.
+              </p>
+            ) : null}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -476,6 +724,12 @@ function EquipmentEditor({
               </div>
             </details>
           </CardHeader>
+          <div className="px-6 pb-4">
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen((value) => !value)}>
+              {open ? "Hide fields" : `Show fields (${item.runningParams.length} readings, ${item.runningChecks.length + item.stoppedChecks.length} checks)`}
+            </Button>
+          </div>
+          {open ? (
           <CardContent className="space-y-6">
             <section>
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -549,6 +803,7 @@ function EquipmentEditor({
               onChange={(stoppedChecks) => onChange({ stoppedChecks })}
             />
           </CardContent>
+          ) : null}
         </div>
       </div>
     </Card>

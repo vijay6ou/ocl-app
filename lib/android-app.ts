@@ -1,9 +1,9 @@
 export const ANDROID_APP = {
   packageId: "com.ocl.maintenance",
   displayName: "Adani Cements",
-  versionName: "1.12.0",
-  versionCode: 14,
+  versionName: "1.13.0",
+  versionCode: 15,
   apkFileName: "ocl-maintenance.apk",
   notes:
-    "Location check-ins use Android LocationManager in the APK (no permission banner). Admin Presence shows who is on the app, last seen, and time spent. Esri World Imagery snapshots, 15-minute slots, add-at-top catalogue.",
+    "Plant areas beyond material handling, equipment blocks with their internal parts, and location check-ins that continue in the background inside the duty window (default 08:00–20:00 IST).",
 } as const;
