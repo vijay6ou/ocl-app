@@ -198,7 +198,7 @@ export function PresenceAdmin() {
         <h1 className="font-heading text-2xl font-semibold">Presence</h1>
         <p className="text-sm text-muted-foreground">
           Who is on the app now, when they signed in, and how long they have been using it today.
-          Location is recorded only while the app is open, and only inside the duty window.
+          Location is one ping every 15 minutes while the app is open, inside the duty window.
         </p>
       </div>
 

@@ -7,14 +7,9 @@ import { msUntilNextPlantSlot, plantSlotKey } from "@/lib/submit-time";
 import type { LocationWindow } from "@/lib/location-window";
 import { isOclNative } from "@/lib/print-native";
 
-async function readWindow() {
+async function dutyWindowOpen() {
   try {
     const data = await api<{ window: LocationWindow; open: boolean }>("/api/location/window");
-    try {
-      window.OCLNative?.setLocationWindow?.(data.window.start, data.window.end, data.window.enabled);
-    } catch {
-      /* browser */
-    }
     return data.open;
   } catch {
     return true;
@@ -28,17 +23,10 @@ function postFix(lat: number, lng: number, accuracy?: number) {
   }).catch(() => undefined);
 }
 
-function nativeHasPermission() {
+function nativeFix(): { lat: number; lng: number; accuracy?: number } | null {
   try {
-    return Boolean(window.OCLNative?.hasLocationPermission?.());
-  } catch {
-    return false;
-  }
-}
-
-function nativeCoords(): { lat: number; lng: number; accuracy?: number } | null {
-  try {
-    const raw = window.OCLNative?.getLocation?.();
+    if (!window.OCLNative?.hasLocationPermission?.()) return null;
+    const raw = window.OCLNative.getLocation?.();
     if (!raw) return null;
     const loc = JSON.parse(raw) as { lat?: unknown; lng?: unknown; accuracy?: unknown };
     const lat = Number(loc.lat);
@@ -52,10 +40,9 @@ function nativeCoords(): { lat: number; lng: number; accuracy?: number } | null 
 }
 
 /**
- * 15-minute location check-ins while this page stays open. Native
- * LocationManager is the source of truth in the APK. No background service
- * and no persistent notification. Never show a permission banner — the OS
- * dialog is enough.
+ * One Discord location ping per 15-minute plant slot while signed in.
+ * Native capture is a single short fix, then GPS is released. No permission
+ * dialog and no background listener.
  */
 export function LocationPing() {
   const { user } = useAuth();
@@ -63,34 +50,18 @@ export function LocationPing() {
   useEffect(() => {
     if (!user) return;
 
-    if (isOclNative()) {
-      try {
-        window.OCLNative?.requestLocationPermission?.();
-      } catch {
-        /* optional */
-      }
-    }
-
     let lastSlot = "";
     async function sendOnce() {
-      const open = await readWindow();
+      const open = await dutyWindowOpen();
       if (!open) return;
       const slot = plantSlotKey();
       if (lastSlot === slot) return;
-      if (isOclNative() && nativeHasPermission()) {
-        const loc = nativeCoords();
-        if (loc) {
-          void postFix(loc.lat, loc.lng, loc.accuracy).then((res) => {
-            if (res?.ok) lastSlot = res.slot || slot;
-          });
-          return;
-        }
-        try {
-          window.OCLNative?.pingLocationNow?.();
-          lastSlot = slot;
-        } catch {
-          /* wait for a GPS fix */
-        }
+      if (isOclNative()) {
+        const loc = nativeFix();
+        if (!loc) return;
+        void postFix(loc.lat, loc.lng, loc.accuracy).then((res) => {
+          if (res?.ok) lastSlot = res.slot || slot;
+        });
         return;
       }
       if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -103,7 +74,7 @@ export function LocationPing() {
           );
         },
         () => undefined,
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 120000 }
+        { enableHighAccuracy: false, timeout: 2000, maximumAge: 120000 }
       );
     }
 
@@ -118,15 +89,8 @@ export function LocationPing() {
     }
     schedule();
 
-    const poll = isOclNative()
-      ? window.setInterval(() => {
-          if (nativeHasPermission()) sendOnce();
-        }, 15_000)
-      : null;
-
     return () => {
       if (timer) window.clearTimeout(timer);
-      if (poll) window.clearInterval(poll);
     };
   }, [user]);
 

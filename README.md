@@ -63,13 +63,13 @@ Existing OCL equipment ids and tags stay unless you expand **Advanced** and chan
 
 ## Technician Android APK
 
-Portrait WebView `com.ocl.maintenance` **1.14.0** (versionCode **16**). The APK does not show the plant server in the UI. There is no first-run “enter plant server” screen. Leftover builder/LAN URLs (`172.30.0.2`, `127.0.0.1`, `192.168.x`, port `43127`) are ignored.
+Portrait WebView `com.ocl.maintenance` **1.15.0** (versionCode **17**). The APK does not show the plant server in the UI. There is no first-run “enter plant server” screen. Leftover builder/LAN URLs (`172.30.0.2`, `127.0.0.1`, `192.168.x`, port `43127`) are ignored.
 
 Default shift is **General (09:00–18:00)**. Equipment is logged as compact interactive cards. Photos sit at the end of each machine. Half-filled rounds auto-save. The in-app **Update** tab shows **Plant server** version codes only.
 
 If the plant server is down the app shows **Cannot reach plant server** and **Retry**. Long-press the title to reveal an admin-only server field (empty hint — not a host).
 
-Equipment **Rear camera** opens the in-app Camera2 activity on `LENS_FACING_BACK` via `OCLNative.capturePhoto("environment")`. **Gallery** is an `<input type="file" accept="image/*">` with no `capture` attribute (system image picker). The submit selfie uses `LENS_FACING_FRONT` only — no gallery on that gate. The equipment chevron is the only expand/collapse control. Signed-in technicians send a 15-minute location check-in only while the app is open (coordinates always; Esri World Imagery snapshot attached when the free fetch works). The Android app does not keep a background location notification. Admin **Presence** sets the duty window (default **08:00–20:00 IST**). Outside that window the phone does not record a point and Presence hides the map. The Forms builder **Add equipment block** / **Add field** buttons at the top of a list insert at the start.
+Equipment **Rear camera** opens the in-app Camera2 activity on `LENS_FACING_BACK` via `OCLNative.capturePhoto("environment")`. **Gallery** is an `<input type="file" accept="image/*">` with no `capture` attribute (system image picker). The submit selfie uses `LENS_FACING_FRONT` only — no gallery on that gate. The equipment chevron is the only expand/collapse control. Signed-in technicians send one location ping per 15-minute slot while the app is open (coordinates always; Esri World Imagery snapshot attached when the free fetch works). The phone takes a single short fix and then releases GPS — no background notification and no permission popup. Admin **Presence** sets the duty window (default **08:00–20:00 IST**). Outside that window the phone does not record a point and Presence hides the map. The Forms builder **Add equipment block** / **Add field** buttons at the top of a list insert at the start.
 
 Admin **Presence** shows who is on the app now, sign-in / last seen, and time spent today. Admin **Storage** shows plant `data/` disk use and can delete saved records and photos between two dates. Catalogue and people are not deleted.
 

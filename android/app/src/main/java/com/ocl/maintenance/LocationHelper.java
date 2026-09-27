@@ -11,23 +11,24 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import org.json.JSONObject;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 /**
- * Location only while this activity is on screen. No foreground service and no
- * persistent notification. Duty-window enforcement stays on the plant server.
+ * One short fix per 15-minute slot. Never keeps GPS running, never shows a
+ * notification, and never prompts for permission.
  */
 public class LocationHelper {
-    static final int REQ_LOCATION = 4106;
+    private static final long FRESH_MS = 2 * 60 * 1000L;
+    private static final long ONCE_MS = 1100L;
 
     static volatile Location lastFix;
 
     private final MainActivity activity;
-    private LocationListener listener;
-    private boolean updatesRequested;
 
     LocationHelper(MainActivity activity) {
         this.activity = activity;
@@ -37,12 +38,8 @@ public class LocationHelper {
         clearStaleTrackingNotice();
     }
 
-    void onResume() {
-        listen();
-    }
-
     void stop() {
-        stopListening();
+        /* nothing held */
     }
 
     boolean hasPermission() {
@@ -53,45 +50,31 @@ public class LocationHelper {
     }
 
     void ensurePermission() {
-        if (hasPermission()) {
-            listen();
-            return;
-        }
-        ActivityCompat.requestPermissions(
-                activity,
-                new String[]{
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                },
-                REQ_LOCATION
-        );
+        /* no-op: do not prompt */
     }
 
     void onPermissionResult() {
-        if (hasPermission()) listen();
+        /* no-op */
     }
 
-    void pingNow() {
-        if (!hasPermission()) return;
-        listen();
-        Location loc = readLastKnown();
-        if (loc != null) lastFix = loc;
-    }
-
-    String lastLocationJson() {
-        Location loc = lastFix;
-        if (loc == null) loc = readLastKnown();
-        if (loc != null) lastFix = loc;
-        if (loc == null) return "";
-        try {
-            JSONObject body = new JSONObject();
-            body.put("lat", loc.getLatitude());
-            body.put("lng", loc.getLongitude());
-            if (loc.hasAccuracy()) body.put("accuracy", loc.getAccuracy());
-            return body.toString();
-        } catch (Exception ignored) {
-            return "";
+    String captureOnce() {
+        if (!hasPermission()) return "";
+        Location known = readLastKnown();
+        long now = System.currentTimeMillis();
+        if (known != null && now - known.getTime() <= FRESH_MS) {
+            lastFix = known;
+            return toJson(known);
         }
+        Location one = takeOneFix();
+        if (one != null) {
+            lastFix = one;
+            return toJson(one);
+        }
+        if (known != null) {
+            lastFix = known;
+            return toJson(known);
+        }
+        return lastFix == null ? "" : toJson(lastFix);
     }
 
     private void clearStaleTrackingNotice() {
@@ -103,58 +86,59 @@ public class LocationHelper {
         }
     }
 
-    private void listen() {
-        if (updatesRequested || !hasPermission()) return;
+    private Location takeOneFix() {
         LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
-        if (lm == null) return;
-        listener = new LocationListener() {
+        if (lm == null) return null;
+        String provider = provider(lm);
+        if (provider == null) return null;
+        final Location[] box = new Location[1];
+        final CountDownLatch done = new CountDownLatch(1);
+        LocationListener listener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                lastFix = location;
+                box[0] = location;
+                done.countDown();
             }
 
             @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
+            public void onStatusChanged(String p, int status, Bundle extras) {
             }
 
             @Override
-            public void onProviderEnabled(String provider) {
+            public void onProviderEnabled(String p) {
             }
 
             @Override
-            public void onProviderDisabled(String provider) {
+            public void onProviderDisabled(String p) {
             }
         };
         try {
-            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60_000L, 0f, listener, Looper.getMainLooper());
-            }
-            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 60_000L, 0f, listener, Looper.getMainLooper());
-            }
-            Location known = readLastKnown();
-            if (known != null) lastFix = known;
-            updatesRequested = true;
-        } catch (SecurityException ignored) {
-            updatesRequested = false;
-        }
-    }
-
-    private void stopListening() {
-        if (!updatesRequested || listener == null) return;
-        LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
-        if (lm != null) {
+            lm.requestSingleUpdate(provider, listener, Looper.getMainLooper());
+            done.await(ONCE_MS, TimeUnit.MILLISECONDS);
+        } catch (SecurityException | InterruptedException ignored) {
+        } finally {
             try {
                 lm.removeUpdates(listener);
             } catch (Exception ignored) {
             }
         }
-        updatesRequested = false;
-        listener = null;
+        return box[0];
+    }
+
+    private String provider(LocationManager lm) {
+        try {
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                return LocationManager.NETWORK_PROVIDER;
+            }
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                return LocationManager.GPS_PROVIDER;
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private Location readLastKnown() {
-        if (!hasPermission()) return null;
         LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
         if (lm == null) return null;
         try {
@@ -165,6 +149,19 @@ public class LocationHelper {
             return gps.getTime() >= net.getTime() ? gps : net;
         } catch (SecurityException ignored) {
             return null;
+        }
+    }
+
+    private static String toJson(Location loc) {
+        if (loc == null) return "";
+        try {
+            JSONObject body = new JSONObject();
+            body.put("lat", loc.getLatitude());
+            body.put("lng", loc.getLongitude());
+            if (loc.hasAccuracy()) body.put("accuracy", loc.getAccuracy());
+            return body.toString();
+        } catch (Exception ignored) {
+            return "";
         }
     }
 }

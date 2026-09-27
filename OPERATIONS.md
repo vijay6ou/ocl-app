@@ -131,7 +131,7 @@ error. Discord failure never rolls back a saved record.
 server**. Technicians pick it up on next load.
 
 **The APK must be rebuilt.**
-Plant app is **1.14.0** (versionCode 16). Build with `./gradlew :app:publishToPlantServer`
+Plant app is **1.15.0** (versionCode 17). Build with `./gradlew :app:publishToPlantServer`
 from `android/` after installing SDK 34.
 
 **Location check-ins.**

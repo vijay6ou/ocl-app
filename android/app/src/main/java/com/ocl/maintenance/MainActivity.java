@@ -117,18 +117,6 @@ public class MainActivity extends Activity {
         launchWithoutHanging();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (locationHelper != null) locationHelper.onResume();
-    }
-
-    @Override
-    protected void onPause() {
-        if (locationHelper != null) locationHelper.stop();
-        super.onPause();
-    }
-
     /** Baked VPS URL unless an admin override is stored and is not leftover junk. */
     public String getServerUrl() {
         String stored = prefs.getString(KEY_SERVER, "");
@@ -300,8 +288,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccessFromFileURLs(true);
         settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setGeolocationEnabled(true);
-        settings.setGeolocationDatabasePath(getFilesDir().getPath());
+        settings.setGeolocationEnabled(false);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(false);
         }
@@ -394,9 +381,6 @@ public class MainActivity extends Activity {
                 }
                 notifyCaptureReady();
             }
-        }
-        if (requestCode == LocationHelper.REQ_LOCATION && locationHelper != null) {
-            locationHelper.onPermissionResult();
         }
     }
 
@@ -592,9 +576,7 @@ public class MainActivity extends Activity {
         @Override
         public void onGeolocationPermissionsShowPrompt(
                 String origin, GeolocationPermissions.Callback callback) {
-            if (locationHelper != null) locationHelper.ensurePermission();
-            boolean allow = locationHelper != null && locationHelper.hasPermission();
-            callback.invoke(origin, allow, false);
+            callback.invoke(origin, false, false);
         }
 
         @Override
@@ -727,9 +709,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void requestLocationPermission() {
-            runOnUiThread(() -> {
-                if (locationHelper != null) locationHelper.ensurePermission();
-            });
+            /* One-shot pings use an existing grant. Do not show a permission dialog. */
         }
 
         @JavascriptInterface
@@ -740,14 +720,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getLocation() {
             if (locationHelper == null || !locationHelper.hasPermission()) return "";
-            return locationHelper.lastLocationJson();
+            return locationHelper.captureOnce();
         }
 
         @JavascriptInterface
         public void pingLocationNow() {
-            runOnUiThread(() -> {
-                if (locationHelper != null) locationHelper.pingNow();
-            });
+            if (locationHelper != null) locationHelper.captureOnce();
         }
 
         @JavascriptInterface
