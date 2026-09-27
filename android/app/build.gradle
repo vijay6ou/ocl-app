@@ -10,9 +10,8 @@ android {
         applicationId "com.ocl.maintenance"
         minSdk 21
         targetSdk 34
-        versionCode 15
-        versionName "1.13.0"
-        buildConfigField "String", "DEFAULT_SERVER_URL", "\"http://158.101.199.190\""
+        versionCode 16
+        versionName "1.14.0"
     }
 
     signingConfigs {
@@ -26,7 +25,9 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             signingConfig signingConfigs.release
         }
         debug {

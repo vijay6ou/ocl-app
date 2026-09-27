@@ -52,10 +52,10 @@ function nativeCoords(): { lat: number; lng: number; accuracy?: number } | null 
 }
 
 /**
- * 15-minute location check-ins. The Android WebView origin is HTTP, so
- * navigator.geolocation often reports denied even when ACCESS_FINE_LOCATION
- * is granted. Native LocationManager is the source of truth in the APK.
- * Never show a permission banner — the OS dialog is enough.
+ * 15-minute location check-ins while this page stays open. Native
+ * LocationManager is the source of truth in the APK. No background service
+ * and no persistent notification. Never show a permission banner — the OS
+ * dialog is enough.
  */
 export function LocationPing() {
   const { user } = useAuth();

@@ -117,13 +117,25 @@ public class MainActivity extends Activity {
         launchWithoutHanging();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (locationHelper != null) locationHelper.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        if (locationHelper != null) locationHelper.stop();
+        super.onPause();
+    }
+
     /** Baked VPS URL unless an admin override is stored and is not leftover junk. */
     public String getServerUrl() {
         String stored = prefs.getString(KEY_SERVER, "");
         if (stored == null) stored = "";
         stored = stored.trim();
         if (stored.isEmpty() || isLeftoverHost(stored)) {
-            return normalizeServerUrl(BuildConfig.DEFAULT_SERVER_URL);
+            return normalizeServerUrl(PlantHost.origin(this));
         }
         return normalizeServerUrl(stored);
     }
@@ -290,8 +302,9 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setGeolocationEnabled(true);
         settings.setGeolocationDatabasePath(getFilesDir().getPath());
-        settings.setUserAgentString(
-                settings.getUserAgentString() + " OCLMaintenance/" + BuildConfig.VERSION_NAME);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(false);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
@@ -382,10 +395,7 @@ public class MainActivity extends Activity {
                 notifyCaptureReady();
             }
         }
-        if ((requestCode == LocationHelper.REQ_LOCATION
-                || requestCode == LocationHelper.REQ_BACKGROUND
-                || requestCode == LocationHelper.REQ_NOTIFICATION)
-                && locationHelper != null) {
+        if (requestCode == LocationHelper.REQ_LOCATION && locationHelper != null) {
             locationHelper.onPermissionResult();
         }
     }
@@ -742,12 +752,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void setLocationWindow(String start, String end, boolean enabled) {
-            LocationService.saveWindow(MainActivity.this, start, end, enabled);
-            runOnUiThread(() -> {
-                if (locationHelper != null && locationHelper.hasPermission()) {
-                    LocationService.start(MainActivity.this);
-                }
-            });
+            /* Duty window is enforced on the plant server. Native no longer tracks in the background. */
         }
 
         @JavascriptInterface
