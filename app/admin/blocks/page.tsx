@@ -1,18 +1,18 @@
 import { redirect } from "next/navigation";
-import { CatalogueHome } from "@/components/catalogue-admin";
+import { BlockLibraryAdmin } from "@/components/block-library-admin";
 import { getCurrentUser } from "@/lib/auth";
-import { getCatalogue } from "@/lib/store";
+import { getBlocks } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function CataloguePage() {
+export default async function BlocksPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role !== "admin") redirect("/days");
-  const catalogue = await getCatalogue();
+  const blocks = await getBlocks();
   return (
     <main className="w-full flex-1">
-      <CatalogueHome initial={catalogue} user={user} />
+      <BlockLibraryAdmin initial={blocks} />
     </main>
   );
 }

@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import seedDays from "@/lib/seed/all-days-data.json";
 import { SEED_ACCOUNTS } from "@/lib/constants";
 import { normalizeCatalogue } from "@/lib/plant-structure";
+import { applyBlocksToCatalogue, EQUIPMENT_BLOCKS, type EquipmentBlock } from "@/lib/equipment-blocks";
+import { MATERIAL_HANDLING_ID, WEEKDAY_TO_AREA } from "@/lib/hierarchy";
 import {
   DEFAULT_LOCATION_WINDOW,
   normalizeLocationWindow,
@@ -13,12 +15,14 @@ import { isFourDigitPin, PIN_LOCK_MS, PIN_MAX_FAILS, SEED_PINS } from "@/lib/see
 import { bakeUprightImage } from "@/lib/image-orient";
 import { recordInDateRange } from "@/lib/submit-time";
 import type {
+  AccessGrant,
   Catalogue,
   DaysData,
   DraftState,
   LocationPing,
   PhotoMeta,
-  PlantArea,
+  Plant,
+  PlantSection,
   PresenceSession,
   PublicUser,
   SessionRecord,
@@ -41,6 +45,7 @@ const LOCATION_DISCORD_THREADS_FILE = path.join(DATA_DIR, "location-discord-thre
 const LOCATIONS_FILE = path.join(DATA_DIR, "locations.json");
 const LOCATION_WINDOW_FILE = path.join(DATA_DIR, "location-window.json");
 const PRESENCE_FILE = path.join(DATA_DIR, "presence.json");
+const BLOCKS_FILE = path.join(DATA_DIR, "blocks.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -174,7 +179,12 @@ async function seedIfNeeded() {
     .catch(() => false);
   if (!windowExist) await writeJson(LOCATION_WINDOW_FILE, DEFAULT_LOCATION_WINDOW);
 
+  const blocksExist = await fs.access(BLOCKS_FILE).then(() => true).catch(() => false);
+  if (!blocksExist) await writeJson(BLOCKS_FILE, EQUIPMENT_BLOCKS);
+
   await migrateUserPins();
+  await migrateUserGrants();
+  await migrateDraftKeys();
 }
 
 async function migrateUserPins() {
@@ -202,23 +212,65 @@ async function migrateUserPins() {
   if (changed) await writeJson(USERS_FILE, next);
 }
 
+async function migrateUserGrants() {
+  const users = await readJson<UserRecord[]>(USERS_FILE, []);
+  let changed = false;
+  const next = users.map((user) => {
+    if (user.grants) return user;
+    changed = true;
+    if (user.role === "admin") return { ...user, grants: [] as AccessGrant[] };
+    return {
+      ...user,
+      grants: [{ kind: "section" as const, targetId: MATERIAL_HANDLING_ID }],
+    };
+  });
+  if (changed) await writeJson(USERS_FILE, next);
+}
+
+async function migrateDraftKeys() {
+  const all = await readJson<Record<string, DraftState>>(DRAFTS_FILE, {});
+  let changed = false;
+  const next = { ...all };
+  for (const [key, draft] of Object.entries(all)) {
+    const colon = key.lastIndexOf(":");
+    if (colon < 0) continue;
+    const userId = key.slice(0, colon);
+    const day = key.slice(colon + 1);
+    const area = WEEKDAY_TO_AREA[day];
+    if (!area) continue;
+    const dest = `${userId}:${area}`;
+    if (!next[dest]) {
+      next[dest] = { ...draft, day: area };
+      changed = true;
+    }
+    delete next[key];
+    changed = true;
+  }
+  if (changed) await writeJson(DRAFTS_FILE, next);
+}
+
 async function loadAll(): Promise<FileStore> {
   await seedIfNeeded();
   const rawCatalogue = await readJson<Catalogue>(CATALOGUE_FILE, {
     version: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    areas: [],
+    plants: [],
+    sections: [],
     days: seedDays as DaysData,
   });
   const normalized = normalizeCatalogue(rawCatalogue);
-  if (normalized.migrated) await writeJson(CATALOGUE_FILE, normalized.catalogue);
+  const blocks = await readJson<EquipmentBlock[]>(BLOCKS_FILE, EQUIPMENT_BLOCKS);
+  const applied = applyBlocksToCatalogue(normalized.catalogue, blocks);
+  if (normalized.migrated || applied.changed) {
+    await writeJson(CATALOGUE_FILE, applied.catalogue);
+  }
   const [users, sessions, submissions, photos] = await Promise.all([
     readJson<UserRecord[]>(USERS_FILE, []),
     readJson<SessionRecord[]>(SESSIONS_FILE, []),
     readJson<Submission[]>(SUBMISSIONS_FILE, []),
     readJson<PhotoMeta[]>(PHOTOS_FILE, []),
   ]);
-  return { catalogue: normalized.catalogue, users, sessions, submissions, photos };
+  return { catalogue: applied.catalogue, users, sessions, submissions, photos };
 }
 
 export function publicUser(user: UserRecord): PublicUser {
@@ -228,25 +280,74 @@ export function publicUser(user: UserRecord): PublicUser {
   void _pin;
   void _fails;
   void _lock;
-  return { ...rest, pinSet: Boolean(user.pinHash) };
+  return { ...rest, pinSet: Boolean(user.pinHash), grants: user.grants ?? [] };
 }
 
 export async function getCatalogue() {
   return withLock(async () => (await loadAll()).catalogue);
 }
 
-export async function saveCatalogue(days: DaysData, areas?: PlantArea[]) {
+export async function saveCatalogue(
+  days: DaysData,
+  structure?: { plants: Plant[]; sections: PlantSection[] }
+) {
   return withLock(async () => {
     const current = await loadAll();
     const now = new Date().toISOString();
     const catalogue: Catalogue = {
       version: now,
       updatedAt: now,
-      areas: areas ?? current.catalogue.areas,
+      plants: structure?.plants ?? current.catalogue.plants,
+      sections: structure?.sections ?? current.catalogue.sections,
       days,
     };
     await writeJson(CATALOGUE_FILE, catalogue);
     return catalogue;
+  });
+}
+
+export async function getBlocks(): Promise<EquipmentBlock[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    return readJson<EquipmentBlock[]>(BLOCKS_FILE, EQUIPMENT_BLOCKS);
+  });
+}
+
+export async function saveBlocks(blocks: EquipmentBlock[]): Promise<EquipmentBlock[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    await writeJson(BLOCKS_FILE, blocks);
+    const raw = await readJson<Catalogue>(CATALOGUE_FILE, {
+      version: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      plants: [],
+      sections: [],
+      days: seedDays as DaysData,
+    });
+    const normalized = normalizeCatalogue(raw);
+    const applied = applyBlocksToCatalogue(normalized.catalogue, blocks);
+    await writeJson(CATALOGUE_FILE, applied.catalogue);
+    return blocks;
+  });
+}
+
+export async function upsertBlock(block: EquipmentBlock): Promise<EquipmentBlock[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const current = await readJson<EquipmentBlock[]>(BLOCKS_FILE, EQUIPMENT_BLOCKS);
+    const idx = current.findIndex((b) => b.id === block.id);
+    const next = idx >= 0 ? current.map((b) => (b.id === block.id ? block : b)) : [...current, block];
+    await writeJson(BLOCKS_FILE, next);
+    const raw = await readJson<Catalogue>(CATALOGUE_FILE, {
+      version: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      plants: [],
+      sections: [],
+      days: seedDays as DaysData,
+    });
+    const applied = applyBlocksToCatalogue(normalizeCatalogue(raw).catalogue, next);
+    await writeJson(CATALOGUE_FILE, applied.catalogue);
+    return next;
   });
 }
 
@@ -301,6 +402,7 @@ export async function createUser(input: {
       pinFailedAttempts: 0,
       active: true,
       createdAt: new Date().toISOString(),
+      grants: [],
     };
     store.users.push(user);
     await writeJson(USERS_FILE, store.users);
@@ -316,6 +418,7 @@ export async function updateUser(
     password?: string;
     pin?: string;
     active?: boolean;
+    grants?: AccessGrant[];
   }
 ) {
   return withLock(async () => {
@@ -345,6 +448,7 @@ export async function updateUser(
       pinHash: patch.pin ? await bcrypt.hash(patch.pin, 10) : current.pinHash,
       pinFailedAttempts: patch.pin ? 0 : current.pinFailedAttempts,
       pinLockedUntil: patch.pin ? undefined : current.pinLockedUntil,
+      grants: patch.grants ?? current.grants ?? [],
     };
     store.users[idx] = next;
     await writeJson(USERS_FILE, store.users);

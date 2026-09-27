@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import type { PublicUser } from "@/lib/types";
 
 const BASE_LINKS = [
-  { href: "/days", label: "Plant sections" },
+  { href: "/days", label: "Plant" },
   { href: "/history", label: "Records" },
 ];
 
@@ -55,6 +55,7 @@ export function AppHeader({ initialUser }: { initialUser?: PublicUser | null }) 
   const auth = useAuth();
   const user = auth.user ?? initialUser ?? null;
   const pathname = usePathname();
+  if (pathname.startsWith("/ux")) return null;
   if (!user) return null;
 
   const links = [
@@ -62,6 +63,7 @@ export function AppHeader({ initialUser }: { initialUser?: PublicUser | null }) 
     ...(user.role === "admin"
       ? [
           { href: "/admin/catalogue", label: "Catalogue" },
+          { href: "/admin/blocks", label: "Blocks" },
           { href: "/admin/people", label: "People" },
           { href: "/admin/presence", label: "Presence" },
           { href: "/admin/storage", label: "Storage" },

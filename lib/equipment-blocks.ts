@@ -1,4 +1,4 @@
-import type { Equipment, RunningParam } from "@/lib/types";
+import type { Catalogue, DaysData, Equipment, RunningParam } from "@/lib/types";
 import { newEquipmentId } from "@/lib/validate";
 
 export type EquipmentBlock = {
@@ -638,13 +638,13 @@ export const EQUIPMENT_BLOCKS: EquipmentBlock[] = [
   }),
 ];
 
-export function equipmentBlock(id: string) {
-  return EQUIPMENT_BLOCKS.find((block) => block.id === id) ?? null;
+export function equipmentBlock(id: string, library: EquipmentBlock[] = EQUIPMENT_BLOCKS) {
+  return library.find((block) => block.id === id) ?? null;
 }
 
-export function blockFamilies() {
+export function blockFamilies(library: EquipmentBlock[] = EQUIPMENT_BLOCKS) {
   const families: { family: string; blocks: EquipmentBlock[] }[] = [];
-  for (const item of EQUIPMENT_BLOCKS) {
+  for (const item of library) {
     const group = families.find((row) => row.family === item.family);
     if (group) group.blocks.push(item);
     else families.push({ family: item.family, blocks: [item] });
@@ -652,9 +652,7 @@ export function blockFamilies() {
   return families;
 }
 
-export function instantiateBlock(blockId: string, usedIds: Set<string>): Equipment | null {
-  const source = equipmentBlock(blockId);
-  if (!source) return null;
+export function instantiateFromBlock(source: EquipmentBlock, usedIds: Set<string>): Equipment {
   const id = newEquipmentId(source.defaultTag, usedIds);
   return {
     id,
@@ -669,4 +667,57 @@ export function instantiateBlock(blockId: string, usedIds: Set<string>): Equipme
     runningChecks: [...source.runningChecks],
     stoppedChecks: [...source.stoppedChecks],
   };
+}
+
+export function instantiateBlock(
+  blockId: string,
+  usedIds: Set<string>,
+  library: EquipmentBlock[] = EQUIPMENT_BLOCKS
+): Equipment | null {
+  const source = equipmentBlock(blockId, library);
+  if (!source) return null;
+  return instantiateFromBlock(source, usedIds);
+}
+
+export function applyBlockToEquipment(eq: Equipment, block: EquipmentBlock): Equipment {
+  const params = block.paramIds.map((paramId, index) => {
+    const spec = block.params[index];
+    const existing =
+      eq.runningParams.find((p) => p.id.endsWith(`_${paramId}`)) ??
+      eq.runningParams.find((p) => p.label === spec.label);
+    return {
+      id: existing?.id ?? `${eq.id}_${paramId}`,
+      label: spec.label,
+      unit: spec.unit,
+      phases: spec.phases,
+      limit: spec.limit,
+    };
+  });
+  return {
+    ...eq,
+    isHT: block.isHT,
+    runningParams: params,
+    runningChecks: [...block.runningChecks],
+    stoppedChecks: [...block.stoppedChecks],
+  };
+}
+
+export function applyBlocksToCatalogue(
+  catalogue: Catalogue,
+  blocks: EquipmentBlock[]
+): { catalogue: Catalogue; changed: boolean } {
+  let changed = false;
+  const days: DaysData = {};
+  for (const [id, day] of Object.entries(catalogue.days)) {
+    const equip = day.equip.map((eq) => {
+      if (!eq.blockId) return eq;
+      const block = equipmentBlock(eq.blockId, blocks);
+      if (!block) return eq;
+      const next = applyBlockToEquipment(eq, block);
+      if (JSON.stringify(next) !== JSON.stringify(eq)) changed = true;
+      return next;
+    });
+    days[id] = { ...day, equip };
+  }
+  return { catalogue: { ...catalogue, days }, changed };
 }

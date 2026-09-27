@@ -39,14 +39,27 @@ export type CommonGroup = {
 export type DayCatalogue = {
   label: string;
   formLabel: string;
-  /** Short card badge, for example Mon or Fan. */
+  /** Short card badge, for example ADD or Fan. */
   badge?: string;
   blurb?: string;
   equip: Equipment[];
   common: CommonGroup[];
 };
 
-/** One process area of the plant. Material handling is the original weekday round. */
+export type Plant = {
+  id: string;
+  name: string;
+};
+
+export type PlantSection = {
+  id: string;
+  plantId: string;
+  name: string;
+  blurb?: string;
+  areaIds: string[];
+};
+
+/** @deprecated Legacy flat grouping. Migrated to plants + sections. */
 export type PlantArea = {
   id: string;
   name: string;
@@ -59,8 +72,16 @@ export type DaysData = Record<string, DayCatalogue>;
 export type Catalogue = {
   version: string;
   updatedAt: string;
-  areas: PlantArea[];
+  plants: Plant[];
+  sections: PlantSection[];
   days: DaysData;
+};
+
+export type GrantKind = "plant" | "section" | "area";
+
+export type AccessGrant = {
+  kind: GrantKind;
+  targetId: string;
 };
 
 export type Role = "admin" | "technician";
@@ -76,6 +97,7 @@ export type UserRecord = {
   pinLockedUntil?: string;
   active: boolean;
   createdAt: string;
+  grants?: AccessGrant[];
 };
 
 export type PublicUser = Omit<
@@ -156,9 +178,13 @@ export type SubmissionMeta = {
   tech: string;
   sup: string;
   form: string;
-  /** Subsection id. The original material-handling rounds keep mon–sat. */
+  /** Area id (Additive, Gypsum, …). Older records may still use mon–sat. */
   day: string;
   dayLabel: string;
+  plantId?: string;
+  plantName?: string;
+  sectionId?: string;
+  sectionName?: string;
   areaId?: string;
   areaName?: string;
   pct: number;

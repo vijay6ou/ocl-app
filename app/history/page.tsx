@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/states";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeArea, canonicalAreaId, filterCatalogueForUser, sectionsOfPlant } from "@/lib/hierarchy";
 import { getCatalogue, listSubmissions } from "@/lib/store";
 import { SHIFT_OPTIONS } from "@/lib/types";
 import { defaultHistoryRange, formatSubmitTimestamp, recordInDateRange, submitInstant } from "@/lib/submit-time";
@@ -27,10 +28,13 @@ export default async function HistoryPage({
   const to = String(sp.to ?? range.to);
   const failures = sp.failures === "1" || sp.failures === "on";
 
-  const catalogue = await getCatalogue();
+  const catalogue = filterCatalogueForUser(user, await getCatalogue());
   let rows = await listSubmissions();
+  if (user.role !== "admin") {
+    rows = rows.filter((r) => canSeeArea(user, catalogue, r.meta.day));
+  }
   rows = rows.filter((r) => recordInDateRange(r, from, to));
-  if (day) rows = rows.filter((r) => r.meta.day === day);
+  if (day) rows = rows.filter((r) => canonicalAreaId(r.meta.day) === canonicalAreaId(day));
   if (shift) rows = rows.filter((r) => r.meta.shift === shift);
   if (failures) rows = rows.filter((r) => r.fails.length > 0);
   if (q) {
@@ -74,14 +78,16 @@ export default async function HistoryPage({
           defaultValue={day}
           className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
         >
-          <option value="">All subsections</option>
-          {catalogue.areas.map((area) => (
-            <optgroup key={area.id} label={area.name}>
-              {area.sectionIds.map((id) => (
-                <option key={id} value={id}>
-                  {catalogue.days[id]?.label ?? id}
-                </option>
-              ))}
+          <option value="">All areas</option>
+          {catalogue.plants.map((plant) => (
+            <optgroup key={plant.id} label={plant.name}>
+              {sectionsOfPlant(catalogue, plant.id).flatMap((section) =>
+                section.areaIds.map((id) => (
+                  <option key={id} value={id}>
+                    {section.name} · {catalogue.days[id]?.label ?? id}
+                  </option>
+                ))
+              )}
             </optgroup>
           ))}
         </select>
@@ -124,7 +130,7 @@ export default async function HistoryPage({
           message={
             q || day || shift || from || to || failures
               ? "Nothing on the server matches these filters. Clear a filter or try another date."
-              : "Finish a Monday–Saturday round and submit it. Archived reports appear here for every signed-in technician."
+              : "Finish an assigned area round and submit it. Archived reports appear here."
           }
         />
       ) : (

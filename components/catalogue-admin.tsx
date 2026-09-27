@@ -16,16 +16,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/states";
 import { api } from "@/lib/api";
-import { DAY_KEYS } from "@/lib/constants";
-import { equipmentBlock, instantiateBlock } from "@/lib/equipment-blocks";
-import { MATERIAL_HANDLING_ID, newPlantId } from "@/lib/section-ids";
+import { instantiateFromBlock, type EquipmentBlock } from "@/lib/equipment-blocks";
+import { useAuth } from "@/components/auth-provider";
+import { PlantTree } from "@/components/plant-tree";
 import type {
   Catalogue,
   CommonGroup,
   CommonItem,
   DayCatalogue,
   Equipment,
-  PlantArea,
   RunningParam,
 } from "@/lib/types";
 import {
@@ -82,14 +81,18 @@ function ReorderButtons({
   );
 }
 
-export function CatalogueHome({ initial }: { initial?: Catalogue } = {}) {
+export function CatalogueHome({
+  initial,
+  user,
+}: {
+  initial?: Catalogue;
+  user?: import("@/lib/types").PublicUser | null;
+} = {}) {
+  const auth = useAuth();
+  const viewer = user ?? auth.user;
   const [catalogue, setCatalogue] = useState<Catalogue | null>(initial ?? null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!initial);
-  const [saving, setSaving] = useState(false);
-  const [areaName, setAreaName] = useState("");
-  const [areaSection, setAreaSection] = useState("");
-  const [sectionName, setSectionName] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setError(null);
@@ -108,262 +111,17 @@ export function CatalogueHome({ initial }: { initial?: Catalogue } = {}) {
     void load();
   }, [load, initial]);
 
-  async function publish(next: Catalogue, message: string) {
-    setSaving(true);
-    try {
-      const data = await api<{ catalogue: Catalogue }>("/api/catalogue", {
-        method: "PUT",
-        body: JSON.stringify({ days: next.days, areas: next.areas }),
-      });
-      setCatalogue(data.catalogue);
-      toast.success(message);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not publish the plant structure.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function addArea() {
-    if (!catalogue) return;
-    const name = areaName.trim();
-    const section = areaSection.trim();
-    if (!name || !section) {
-      toast.error("Name the area and its first subsection.");
-      return;
-    }
-    const areaId = newPlantId(name, new Set(catalogue.areas.map((area) => area.id)), "area");
-    const sectionId = newPlantId(section, new Set(Object.keys(catalogue.days)), "section");
-    const row: DayCatalogue = {
-      label: section,
-      formLabel: `${name} – ${section}`,
-      badge: section.slice(0, 4),
-      blurb: "",
-      equip: [],
-      common: [],
-    };
-    const area: PlantArea = { id: areaId, name, blurb: "", sectionIds: [sectionId] };
-    setAreaName("");
-    setAreaSection("");
-    void publish(
-      {
-        ...catalogue,
-        areas: [...catalogue.areas, area],
-        days: { ...catalogue.days, [sectionId]: row },
-      },
-      `${name} is on the plant list.`
-    );
-  }
-
-  function addSection(area: PlantArea) {
-    if (!catalogue) return;
-    const name = (sectionName[area.id] ?? "").trim();
-    if (!name) {
-      toast.error("Name the subsection.");
-      return;
-    }
-    const sectionId = newPlantId(name, new Set(Object.keys(catalogue.days)), "section");
-    const row: DayCatalogue = {
-      label: name,
-      formLabel: `${area.name} – ${name}`,
-      badge: name.slice(0, 4),
-      blurb: "",
-      equip: [],
-      common: [],
-    };
-    setSectionName((prev) => ({ ...prev, [area.id]: "" }));
-    void publish(
-      {
-        ...catalogue,
-        areas: catalogue.areas.map((item) =>
-          item.id === area.id ? { ...item, sectionIds: [...item.sectionIds, sectionId] } : item
-        ),
-        days: { ...catalogue.days, [sectionId]: row },
-      },
-      `${name} added under ${area.name}.`
-    );
-  }
-
-  function renameArea(area: PlantArea, name: string) {
-    if (!catalogue) return;
-    const nextName = name.trim();
-    if (!nextName || nextName === area.name) return;
-    void publish(
-      {
-        ...catalogue,
-        areas: catalogue.areas.map((item) =>
-          item.id === area.id ? { ...item, name: nextName } : item
-        ),
-      },
-      "Area name published."
-    );
-  }
-
-  function removeSection(area: PlantArea, sectionId: string) {
-    if (!catalogue) return;
-    if ((DAY_KEYS as readonly string[]).includes(sectionId)) {
-      toast.error("The material-handling weekday forms stay on the catalogue.");
-      return;
-    }
-    if (area.sectionIds.length <= 1) {
-      toast.error("Add another subsection before removing this one.");
-      return;
-    }
-    const section = catalogue.days[sectionId];
-    if (!confirm(`Remove ${section?.label ?? sectionId} from ${area.name}?`)) return;
-    const days = { ...catalogue.days };
-    delete days[sectionId];
-    void publish(
-      {
-        ...catalogue,
-        areas: catalogue.areas.map((item) =>
-          item.id === area.id
-            ? { ...item, sectionIds: item.sectionIds.filter((id) => id !== sectionId) }
-            : item
-        ),
-        days,
-      },
-      "Subsection removed."
-    );
-  }
-
-  function removeArea(area: PlantArea) {
-    if (!catalogue) return;
-    if (area.id === MATERIAL_HANDLING_ID) {
-      toast.error("Material handling stays. Add subsections instead of removing the area.");
-      return;
-    }
-    if (!confirm(`Remove ${area.name} and its subsections?`)) return;
-    const days = { ...catalogue.days };
-    for (const id of area.sectionIds) {
-      if (!(DAY_KEYS as readonly string[]).includes(id)) delete days[id];
-    }
-    void publish(
-      {
-        ...catalogue,
-        areas: catalogue.areas.filter((item) => item.id !== area.id),
-        days,
-      },
-      `${area.name} removed.`
-    );
-  }
-
   if (loading) return <LoadingState label="Loading live catalogue…" />;
   if (error) return <ErrorState message={error} onRetry={() => void load()} />;
-  if (!catalogue) return null;
+  if (!catalogue || !viewer) return null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold">Equipment catalogue</h1>
-        <p className="text-sm text-muted-foreground">
-          Material handling keeps the weekday forms. Add other plant areas, then give each area
-          its own subsections and open the form to drop in equipment blocks.
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Last published {new Date(catalogue.updatedAt).toLocaleString()}
-        </p>
-      </div>
-
-      {catalogue.areas.map((area) => (
-        <section key={area.id} className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="min-w-[16rem] flex-1 space-y-1.5">
-              <Label htmlFor={`area-${area.id}`}>Plant area</Label>
-              <Input
-                id={`area-${area.id}`}
-                defaultValue={area.name}
-                key={`${area.id}-${area.name}`}
-                onBlur={(e) => renameArea(area, e.target.value)}
-                disabled={saving}
-              />
-              {area.blurb ? <p className="text-sm text-muted-foreground">{area.blurb}</p> : null}
-            </div>
-            {area.id === MATERIAL_HANDLING_ID ? null : (
-              <Button variant="outline" disabled={saving} onClick={() => removeArea(area)}>
-                Remove area
-              </Button>
-            )}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {area.sectionIds.map((key) => {
-              const day = catalogue.days[key];
-              if (!day) return null;
-              const locked = (DAY_KEYS as readonly string[]).includes(key);
-              return (
-                <Card key={key}>
-                  <CardHeader>
-                    <CardTitle>{day.formLabel || day.label}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">
-                      {day.equip.length} equipment ·{" "}
-                      {day.common.reduce((n, g) => n + g.items.length, 0)} common devices
-                    </p>
-                    <div className="flex gap-2">
-                      {locked ? null : (
-                        <Button
-                          variant="outline"
-                          disabled={saving}
-                          onClick={() => removeSection(area, key)}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                      <Button render={<Link href={`/admin/catalogue/${key}`} />}>Edit form</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              value={sectionName[area.id] ?? ""}
-              onChange={(e) => setSectionName((prev) => ({ ...prev, [area.id]: e.target.value }))}
-              placeholder={`New subsection in ${area.name}`}
-              disabled={saving}
-            />
-            <Button variant="outline" disabled={saving} onClick={() => addSection(area)}>
-              <Plus className="size-4" />
-              Add subsection
-            </Button>
-          </div>
-        </section>
-      ))}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Add a plant area</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="new-area">Area name</Label>
-            <Input
-              id="new-area"
-              value={areaName}
-              onChange={(e) => setAreaName(e.target.value)}
-              placeholder="Packing plant"
-              disabled={saving}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="new-area-section">First subsection</Label>
-            <Input
-              id="new-area-section"
-              value={areaSection}
-              onChange={(e) => setAreaSection(e.target.value)}
-              placeholder="Packer drives"
-              disabled={saving}
-            />
-          </div>
-          <Button className="sm:col-span-2 sm:w-fit" disabled={saving} onClick={addArea}>
-            <Plus className="size-4" />
-            Add area
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <PlantTree
+      catalogue={catalogue}
+      user={viewer}
+      mode="admin"
+      onCatalogue={setCatalogue}
+    />
   );
 }
 
@@ -381,6 +139,13 @@ export function CatalogueDayEditor({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pickerAt, setPickerAt] = useState<"start" | "end" | null>(null);
+  const [blocks, setBlocks] = useState<EquipmentBlock[]>([]);
+
+  useEffect(() => {
+    void api<{ blocks: EquipmentBlock[] }>("/api/blocks")
+      .then((data) => setBlocks(data.blocks))
+      .catch(() => undefined);
+  }, []);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -438,7 +203,10 @@ export function CatalogueDayEditor({
       if (!prev) return prev;
       const used = new Set(prev.equip.map((e) => e.id));
       const next: Equipment | null = blockId
-        ? instantiateBlock(blockId, used)
+        ? (() => {
+            const source = blocks.find((b) => b.id === blockId);
+            return source ? instantiateFromBlock(source, used) : null;
+          })()
         : {
             id: newEquipmentId("new_equipment", used),
             tag: "NEW-TAG",
@@ -550,6 +318,7 @@ export function CatalogueDayEditor({
               item={item}
               index={index}
               total={section.equip.length}
+              block={item.blockId ? blocks.find((b) => b.id === item.blockId) ?? null : null}
               onChange={(patch) => updateEquip(item.id, patch)}
               onMove={(dir) => setEquip(moveItem(section.equip, index, dir))}
               onDelete={() =>
@@ -570,6 +339,7 @@ export function CatalogueDayEditor({
       </button>
       {pickerAt ? (
         <EquipmentBlockPicker
+          blocks={blocks}
           onPick={(blockId) => insertEquipment(blockId)}
           onBlank={() => insertEquipment(null)}
           onClose={() => setPickerAt(null)}
@@ -627,6 +397,7 @@ function EquipmentEditor({
   item,
   index,
   total,
+  block,
   onChange,
   onMove,
   onDelete,
@@ -634,6 +405,7 @@ function EquipmentEditor({
   item: Equipment;
   index: number;
   total: number;
+  block: EquipmentBlock | null;
   onChange: (patch: Partial<Equipment>) => void;
   onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
@@ -700,10 +472,10 @@ function EquipmentEditor({
                 />
               </div>
             </div>
-            {item.blockId && equipmentBlock(item.blockId) ? (
+            {block ? (
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Block: {equipmentBlock(item.blockId)?.title}. Parts:{" "}
-                {equipmentBlock(item.blockId)?.parts.join(" · ")}.
+                Follows library block: {block.title}. Parts: {block.parts.join(" · ")}. Edit the
+                block in the library to change readings and checks on every form that uses it.
               </p>
             ) : null}
             <label className="flex items-center gap-2 text-sm">

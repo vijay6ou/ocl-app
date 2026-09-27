@@ -1,6 +1,6 @@
 # Adani Cements Weekly Electrical Maintenance
 
-Cloud-backed technician log for **Adani Cements, Electrical Department, Chittapur**. Material handling is one plant area (Monday–Saturday). Raw mill, kiln, cement mill, and the power plant are further areas, each with its own subsections. Admins can add more areas. The server file store is the source of truth for the equipment catalogue, people, submissions, and defect photos.
+Cloud-backed technician log for **Adani Cements, Electrical Department, Chittapur**. The plant is a tree: **plant → section → area**. The first plant is Adani Cements Chittapur. Material handling is a section with areas Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher. Admins add empty plants, sections, and areas when needed. A technician only sees the locations they are assigned. The server file store is the source of truth for the equipment catalogue, people, submissions, and defect photos.
 
 The technician APK opens the plant server only. Admins publish the live catalogue from a Forms-style builder. After a successful submit the plant server posts **four Discord messages** in that date’s thread (full form, faults, photos, PDF). Discord is the only notify channel.
 
@@ -37,24 +37,23 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 ## Workflow
 
 1. Sign in with a personal account.
-2. Pick a plant area, then a subsection. Material handling is still Monday–Saturday (Additive, Bauxite, Gypsum, LC-8/Tippler, Coal reclaimers, Coal crusher & stacker). Raw mill, kiln, cement mill, and the power plant have their own subsections.
+2. Open an area from the plant tree. You only see plants, sections, and areas assigned to you. Material handling currently has Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher.
 3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**).
 4. Submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord is notified (selfie included with photos and PDF). The exact submit time is stored and shown on the record, PDF, and Discord full-form message (plant local IST).
 5. Print / save PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos).
-6. Search and reprint history from the cloud archive — last **30 days** of saved records for every signed-in technician and admin.
+6. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
 
-### Admin: plant areas and equipment blocks
+### Admin: plant tree, blocks, and access
 
-1. Sign in as admin and open **Catalogue**.
-2. Material handling keeps the six weekday forms. Other areas are listed under it.
-3. Add an area (name plus its first subsection) or add a subsection under an existing area.
-4. Open **Edit form**. **Add equipment block** inserts a complete card: squirrel-cage or wound-rotor motor, with a direct starter or a variable-speed drive, oil or dry transformer, conveyor, fan, bag filter, and the other plant drives. The block brings the readings and the checks for its internal parts. An empty card is still available.
-5. Tap **Publish to plant server**.
+1. Sign in as admin and open **Catalogue**. The tree is plant → section → area. Add empty plants, sections, and areas from the tree.
+2. Open an area to edit its form. **Add equipment block** inserts a card from the **Blocks** library.
+3. Open **Blocks** to edit a type or add a new one. Saving a block updates every working form that already uses it. Submitted records stay frozen.
+4. Open **People** → **Locations** to assign a technician a whole plant, a section, or named areas (more than one is allowed).
 
 ### Admin: add a parameter column
 
 1. Sign in as admin.
-2. Open **Catalogue** → the weekday (for example Monday – Additive Section).
+2. Open **Catalogue** → Additive (or another area).
 3. Open the equipment card.
 4. Under **Parameter columns** tap **Add field**.
 5. Fill the column title, unit, limit, and optional R/Y/B.

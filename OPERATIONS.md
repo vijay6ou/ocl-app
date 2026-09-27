@@ -127,7 +127,7 @@ error. Discord failure never rolls back a saved record.
 5 wrong attempts locks it for 15 minutes. An admin can reset it in **People**.
 
 **An admin wants to publish a catalogue change.**
-**Catalogue** → weekday → equipment card → **Add field** → **Publish to plant
+**Catalogue** → area (for example Additive) → equipment card → **Add field** → **Publish to plant
 server**. Technicians pick it up on next load.
 
 **The APK must be rebuilt.**

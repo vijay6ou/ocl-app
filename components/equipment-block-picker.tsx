@@ -1,18 +1,20 @@
 "use client";
 
-import { blockFamilies } from "@/lib/equipment-blocks";
+import { blockFamilies, type EquipmentBlock } from "@/lib/equipment-blocks";
 import { Button } from "@/components/ui/button";
 
 export function EquipmentBlockPicker({
+  blocks,
   onPick,
   onBlank,
   onClose,
 }: {
+  blocks: EquipmentBlock[];
   onPick: (blockId: string) => void;
   onBlank: () => void;
   onClose: () => void;
 }) {
-  const families = blockFamilies();
+  const families = blockFamilies(blocks);
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-3 sm:items-center">
       <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">

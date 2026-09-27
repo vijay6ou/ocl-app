@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { AccessEditor } from "@/components/access-editor";
 import { api } from "@/lib/api";
-import type { PublicUser, Role } from "@/lib/types";
+import type { AccessGrant, Catalogue, PublicUser, Role } from "@/lib/types";
 
 export function PeopleAdmin() {
   const [users, setUsers] = useState<PublicUser[] | null>(null);
+  const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
+  const [openAccess, setOpenAccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState("");
@@ -25,8 +28,12 @@ export function PeopleAdmin() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api<{ users: PublicUser[] }>("/api/users");
-      setUsers(data.users);
+      const [people, cat] = await Promise.all([
+        api<{ users: PublicUser[] }>("/api/users"),
+        api<{ catalogue: Catalogue }>("/api/catalogue"),
+      ]);
+      setUsers(people.users);
+      setCatalogue(cat.catalogue);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load people.");
     } finally {
@@ -159,8 +166,9 @@ export function PeopleAdmin() {
         {users?.map((person) => (
           <div
             key={person.id}
-            className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-xl border bg-card p-3"
           >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium">{person.name}</span>
@@ -173,6 +181,15 @@ export function PeopleAdmin() {
               <p className="text-sm text-muted-foreground">{person.username}</p>
             </div>
             <div className="flex flex-wrap gap-2">
+              {person.role === "technician" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOpenAccess(openAccess === person.id ? null : person.id)}
+                >
+                  {openAccess === person.id ? "Hide locations" : "Locations"}
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="sm"
@@ -211,6 +228,18 @@ export function PeopleAdmin() {
                 Delete
               </Button>
             </div>
+            </div>
+            {openAccess === person.id && catalogue && person.role === "technician" ? (
+              <AccessEditor
+                catalogue={catalogue}
+                person={person}
+                onChange={(grants: AccessGrant[]) => {
+                  void patch(person.id, { grants }).then((ok) => {
+                    if (ok) toast.success("Locations updated.");
+                  });
+                }}
+              />
+            ) : null}
           </div>
         ))}
       </div>

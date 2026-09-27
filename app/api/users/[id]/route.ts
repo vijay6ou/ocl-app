@@ -17,6 +17,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       password?: string;
       pin?: string;
       active?: boolean;
+      grants?: import("@/lib/types").AccessGrant[];
     };
     if (body.password && body.password.length < 8) {
       return NextResponse.json(
@@ -33,6 +34,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       password: body.password,
       pin: body.pin,
       active: body.active,
+      grants: body.grants,
     });
     return NextResponse.json({ user });
   } catch (err) {

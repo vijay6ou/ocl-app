@@ -1,26 +1,29 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/auth";
-import { isSafeSectionId } from "@/lib/plant-structure";
+import { canSeeArea, canonicalAreaId } from "@/lib/hierarchy";
+import { isSafeSectionId } from "@/lib/section-ids";
 import { deleteDraft, getCatalogue, getDraft, saveDraft } from "@/lib/store";
 import type { CommonState, DraftState, EquipState, ShiftCode } from "@/lib/types";
 import { SHIFT_OPTIONS } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-async function knownSection(day: string) {
+async function knownSection(day: string, user: Awaited<ReturnType<typeof requireUser>>) {
   if (!isSafeSectionId(day)) return false;
   const catalogue = await getCatalogue();
-  return Boolean(catalogue.days[day]);
+  const id = canonicalAreaId(day);
+  if (!catalogue.days[id] && !catalogue.days[day]) return false;
+  return canSeeArea(user, catalogue, id);
 }
 
 export async function GET(req: Request) {
   try {
     const user = await requireUser();
     const day = new URL(req.url).searchParams.get("day") ?? "";
-    if (!(await knownSection(day))) {
+    if (!(await knownSection(day, user))) {
       return NextResponse.json({ error: "Pick a plant subsection." }, { status: 400 });
     }
-    const draft = await getDraft(user.id, day);
+    const draft = await getDraft(user.id, canonicalAreaId(day));
     return NextResponse.json({ draft });
   } catch (err) {
     return jsonError(err);
@@ -38,14 +41,14 @@ export async function PUT(req: Request) {
       equip?: Record<string, EquipState>;
       common?: Record<string, CommonState>;
     };
-    if (!body.day || !(await knownSection(body.day))) {
+    if (!body.day || !(await knownSection(body.day, user))) {
       return NextResponse.json({ error: "Pick a plant subsection." }, { status: 400 });
     }
     if (body.shift && !SHIFT_OPTIONS.some((s) => s.code === body.shift)) {
       return NextResponse.json({ error: "Unknown shift." }, { status: 400 });
     }
     const draft: DraftState = {
-      day: body.day,
+      day: canonicalAreaId(body.day),
       savedAt: new Date().toISOString(),
       meta: {
         date: (body.date ?? "").trim(),
@@ -66,10 +69,10 @@ export async function DELETE(req: Request) {
   try {
     const user = await requireUser();
     const day = new URL(req.url).searchParams.get("day") ?? "";
-    if (!(await knownSection(day))) {
+    if (!(await knownSection(day, user))) {
       return NextResponse.json({ error: "Pick a plant subsection." }, { status: 400 });
     }
-    await deleteDraft(user.id, day);
+    await deleteDraft(user.id, canonicalAreaId(day));
     return NextResponse.json({ ok: true });
   } catch (err) {
     return jsonError(err);

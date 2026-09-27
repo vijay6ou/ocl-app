@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/auth";
 import { notifySubmission } from "@/lib/notify";
-import { findArea, isSafeSectionId } from "@/lib/plant-structure";
+import { canSeeArea, canonicalAreaId, pathForArea } from "@/lib/hierarchy";
+import { isSafeSectionId } from "@/lib/section-ids";
 import { getCatalogue, getPhoto, listSubmissions, saveSubmission, verifyPin } from "@/lib/store";
 import type {
   CommonState,
@@ -21,7 +22,7 @@ function shiftLabel(code: ShiftCode) {
 
 export async function GET(req: Request) {
   try {
-    await requireUser();
+    const user = await requireUser();
     const url = new URL(req.url);
     const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
     const day = url.searchParams.get("day");
@@ -31,12 +32,16 @@ export async function GET(req: Request) {
     const failures = url.searchParams.get("failures") === "1";
 
     let rows = await listSubmissions();
+    const catalogue = await getCatalogue();
+    if (user.role !== "admin") {
+      rows = rows.filter((r) => canSeeArea(user, catalogue, r.meta.day));
+    }
     const range = defaultHistoryRange();
     const fromDate = from && from.trim() ? from : range.from;
     const toDate = to && to.trim() ? to : range.to;
     rows = rows.filter((r) => recordInDateRange(r, fromDate, toDate));
     if (day && isSafeSectionId(day)) {
-      rows = rows.filter((r) => r.meta.day === day);
+      rows = rows.filter((r) => canonicalAreaId(r.meta.day) === canonicalAreaId(day));
     }
     if (shift) rows = rows.filter((r) => r.meta.shift === shift);
     if (failures) rows = rows.filter((r) => r.fails.length > 0);
@@ -123,11 +128,15 @@ export async function POST(req: Request) {
     }
 
     const catalogue = await getCatalogue();
-    const day = catalogue.days[dayKey];
+    const resolvedKey = canonicalAreaId(dayKey);
+    const day = catalogue.days[resolvedKey] ?? catalogue.days[dayKey];
     if (!day) {
-      return NextResponse.json({ error: "That subsection is not on the plant catalogue." }, { status: 400 });
+      return NextResponse.json({ error: "That area is not on the plant catalogue." }, { status: 400 });
     }
-    const area = findArea(catalogue, dayKey);
+    if (!canSeeArea(user, catalogue, resolvedKey)) {
+      return NextResponse.json({ error: "You are not assigned to this area." }, { status: 403 });
+    }
+    const trail = pathForArea(catalogue, resolvedKey);
     const equip = body.equip ?? {};
     const common = body.common ?? {};
     const progress = progressForDay(day, equip, common);
@@ -148,10 +157,14 @@ export async function POST(req: Request) {
         tech: user.name,
         sup: (body.sup ?? "").trim(),
         form: day.formLabel,
-        day: dayKey,
+        day: resolvedKey,
         dayLabel: day.label,
-        areaId: area?.id,
-        areaName: area?.name,
+        plantId: trail.plant?.id,
+        plantName: trail.plant?.name,
+        sectionId: trail.section?.id,
+        sectionName: trail.section?.name,
+        areaId: resolvedKey,
+        areaName: day.label,
         pct: progress.pct,
         done: progress.done,
         total: progress.total,

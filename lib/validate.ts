@@ -1,5 +1,6 @@
+import { DAY_KEYS, type DayKey } from "@/lib/types";
 import { isSafeSectionId } from "@/lib/section-ids";
-import { DAY_KEYS, type DaysData, type DayCatalogue, type DayKey, type PlantArea } from "@/lib/types";
+import type { Catalogue, DayCatalogue, DaysData } from "@/lib/types";
 
 function slugId(value: string, fallback: string) {
   const slug = value
@@ -10,16 +11,16 @@ function slugId(value: string, fallback: string) {
   return slug || fallback;
 }
 
-function validateSection(key: string, day: DayCatalogue) {
-  if (!day) throw new Error(`Missing plant section ${key}.`);
-  if (!isSafeSectionId(key)) throw new Error(`Section id ${key} is not valid.`);
+export function validateSection(key: string, day: DayCatalogue) {
+  if (!day) throw new Error(`Missing plant area ${key}.`);
+  if (!isSafeSectionId(key)) throw new Error(`Area id ${key} is not valid.`);
   if (!day.label?.trim() || !day.formLabel?.trim()) {
-    throw new Error(`Section ${key} needs a label.`);
+    throw new Error(`Area ${key} needs a label.`);
   }
   day.badge = day.badge?.trim() ?? "";
   day.blurb = day.blurb?.trim() ?? "";
   if (!Array.isArray(day.equip) || !Array.isArray(day.common)) {
-    throw new Error(`Section ${key} is missing equipment or common devices.`);
+    throw new Error(`Area ${key} is missing equipment or common devices.`);
   }
   const equipIds = new Set<string>();
   const tags = new Set<string>();
@@ -75,42 +76,48 @@ function validateSection(key: string, day: DayCatalogue) {
 }
 
 export function validateDays(days: DaysData) {
-  for (const key of DAY_KEYS) {
-    if (!days[key]) throw new Error(`Missing plant section for ${key}.`);
-  }
   for (const key of Object.keys(days)) validateSection(key, days[key]);
   return days;
 }
 
-export function validatePlantCatalogue(areas: PlantArea[], days: DaysData) {
-  if (!Array.isArray(areas) || areas.length === 0) {
-    throw new Error("Add at least one plant area.");
+export function validatePlantCatalogue(catalogue: Pick<Catalogue, "plants" | "sections" | "days">) {
+  if (!Array.isArray(catalogue.plants) || catalogue.plants.length === 0) {
+    throw new Error("Add at least one plant.");
   }
-  const validatedDays = validateDays(days);
-  const seenAreas = new Set<string>();
-  const seenSections = new Set<string>();
-  for (const area of areas) {
-    if (!isSafeSectionId(area.id)) throw new Error("Each plant area needs a valid id.");
-    if (!area.name?.trim()) throw new Error("Each plant area needs a name.");
-    if (seenAreas.has(area.id)) throw new Error(`Duplicate plant area ${area.id}.`);
-    seenAreas.add(area.id);
-    area.name = area.name.trim();
-    area.blurb = area.blurb?.trim() ?? "";
-    if (!Array.isArray(area.sectionIds) || area.sectionIds.length === 0) {
-      throw new Error(`${area.name} needs at least one subsection.`);
+  const days = validateDays(catalogue.days);
+  const plantIds = new Set<string>();
+  for (const plant of catalogue.plants) {
+    if (!isSafeSectionId(plant.id)) throw new Error("Each plant needs a valid id.");
+    if (!plant.name?.trim()) throw new Error("Each plant needs a name.");
+    if (plantIds.has(plant.id)) throw new Error(`Duplicate plant ${plant.id}.`);
+    plantIds.add(plant.id);
+    plant.name = plant.name.trim();
+  }
+  const sectionIds = new Set<string>();
+  const listedAreas = new Set<string>();
+  for (const section of catalogue.sections) {
+    if (!isSafeSectionId(section.id)) throw new Error("Each section needs a valid id.");
+    if (!section.name?.trim()) throw new Error("Each section needs a name.");
+    if (!plantIds.has(section.plantId)) {
+      throw new Error(`${section.name} is not attached to a plant.`);
     }
-    for (const id of area.sectionIds) {
-      if (!validatedDays[id]) throw new Error(`${area.name} lists a missing subsection ${id}.`);
-      if (seenSections.has(id)) throw new Error(`Subsection ${id} is in more than one area.`);
-      seenSections.add(id);
+    if (sectionIds.has(section.id)) throw new Error(`Duplicate section ${section.id}.`);
+    sectionIds.add(section.id);
+    section.name = section.name.trim();
+    section.blurb = section.blurb?.trim() ?? "";
+    section.areaIds = section.areaIds ?? [];
+    for (const id of section.areaIds) {
+      if (!days[id]) throw new Error(`${section.name} lists a missing area ${id}.`);
+      if (listedAreas.has(id)) throw new Error(`Area ${id} is in more than one section.`);
+      listedAreas.add(id);
     }
   }
-  for (const id of Object.keys(validatedDays)) {
-    if (!seenSections.has(id)) {
-      throw new Error(`Subsection ${id} is not placed in a plant area.`);
+  for (const id of Object.keys(days)) {
+    if (!listedAreas.has(id)) {
+      throw new Error(`Area ${id} is not placed in a section.`);
     }
   }
-  return { areas, days: validatedDays };
+  return { plants: catalogue.plants, sections: catalogue.sections, days };
 }
 
 export function uniqueId(seed: string, used: Set<string>, fallback: string) {
