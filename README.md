@@ -38,16 +38,18 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 
 1. Sign in with a personal account.
 2. Open an area from the plant tree. You only see plants, sections, and areas assigned to you. Material handling currently has Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher.
-3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**).
+3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**). Each photo is stored under **plant → section → area → motor tag**, so every shot of that machine lives in one folder.
 4. Submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord is notified (selfie included with photos and PDF). The exact submit time is stored and shown on the record, PDF, and Discord full-form message (plant local IST).
-5. Print / save PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos).
-6. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
+5. Open **Files** to browse the same plant tree and open a motor’s album. Add a nameplate or defect shot from the rear camera or gallery without filling a round.
+6. At the end of the shift open **Handover**. Mix headings, notes, bullets, numbered steps, checklists, counts, times, attention callouts, spoken/dictated notes, rear-camera photos, and gallery inserts. Save a draft or hand it to the next shift.
+7. Print / save PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos).
+8. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
 
 ### Admin: plant tree, blocks, and access
 
 1. Sign in as admin and open **Catalogue**. The tree is plant → section → area. Add empty plants, sections, and areas from the tree. **Copy** on an area duplicates it (Cement mill 1 → Cement mill 2) or copies its motors onto another area. **Copy** on a section clones every area in that section.
-2. Open an area to edit its form. **Add equipment block** can drop a **super block** (a stacker of five motors) or one type. **Save as super block** bundles the current form’s types for reuse.
-3. Open **Blocks** to edit a type, add a type, or build a super block from types. Saving a type updates every working form that already uses it. Submitted records stay frozen.
+2. Open an area to edit its form. **Add equipment block** can drop a **super block** (a stacker of five motors) or one type. **Copy card** on a machine duplicates it for motor 1 vs motor 2. **Save as super block** bundles the current form’s types for reuse.
+3. Open **Blocks** to edit a type, **Copy type** for a near-duplicate (change one or two checks), add a type, or build a super block from types. **Copy kit** does the same for super blocks. Saving a type updates every working form that already uses it. Submitted records stay frozen.
 4. Open **People** → **Locations** to assign a technician a whole plant, a section, or named areas (more than one is allowed).
 
 ### Admin: add a parameter column
@@ -71,7 +73,7 @@ If the plant server is down the app shows **Cannot reach plant server** and **Re
 
 Equipment **Rear camera** opens the in-app Camera2 activity on `LENS_FACING_BACK` via `OCLNative.capturePhoto("environment")`. **Gallery** is an `<input type="file" accept="image/*">` with no `capture` attribute (system image picker). The submit selfie uses `LENS_FACING_FRONT` only — no gallery on that gate. The equipment chevron is the only expand/collapse control. Signed-in technicians send one location ping per 15-minute slot while the app is open (coordinates always; Esri World Imagery snapshot attached when the free fetch works). The phone takes a single short fix and then releases GPS — no background notification and no permission popup. Admin **Presence** sets the duty window (default **08:00–20:00 IST**). Outside that window the phone does not record a point and Presence hides the map. The Forms builder **Add equipment block** / **Add field** buttons at the top of a list insert at the start.
 
-Admin **Presence** shows who is on the app now, sign-in / last seen, and time spent today. Admin **Storage** shows plant `data/` disk use and can delete saved records and photos between two dates. Catalogue and people are not deleted.
+Admin **Presence** shows who is on the app now, sign-in / last seen, and time spent today. Admin **Storage** shows plant `data/` disk use and can delete saved records between two dates. Photos already filed in an equipment album are kept. Catalogue and people are not deleted.
 
 ### Install on a phone
 
@@ -122,7 +124,8 @@ Runtime files live in `data/` (gitignored):
 - `catalogue.json` — live checklist, seeded from `lib/seed/all-days-data.json`
 - `users.json` / `sessions.json` — PIN hashes at rest (`pinHash`); lockout after 5 failed attempts (15 minutes)
 - `submissions.json`
-- `photos.json` + `uploads/`
+- `photos.json` + `uploads/` (legacy blobs) + `media/{plant}/{section}/{area}/{tag}/` (equipment albums)
+- `eod.json` — end-of-day technician handovers
 - `discord-threads.json` — date → Discord thread id
 - `releases/ocl-maintenance.apk` — hosted technician app
 - `presence.json` — who is on the app (sign-in, last seen, sessions; no IP)

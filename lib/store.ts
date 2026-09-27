@@ -6,6 +6,7 @@ import { SEED_ACCOUNTS } from "@/lib/constants";
 import { normalizeCatalogue } from "@/lib/plant-structure";
 import { applyBlocksToCatalogue, EQUIPMENT_BLOCKS, type EquipmentBlock, type SuperBlock } from "@/lib/equipment-blocks";
 import { MATERIAL_HANDLING_ID, WEEKDAY_TO_AREA } from "@/lib/hierarchy";
+import { assertSafeRelPath, isAlbumPhoto, mediaRelPath, type PhotoPlace } from "@/lib/media-path";
 import {
   DEFAULT_LOCATION_WINDOW,
   normalizeLocationWindow,
@@ -19,6 +20,7 @@ import type {
   Catalogue,
   DaysData,
   DraftState,
+  EodNote,
   LocationPing,
   PhotoMeta,
   Plant,
@@ -34,6 +36,7 @@ export type DiscordThread = { threadId: string; updatedAt: string };
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
+const MEDIA_DIR = path.join(DATA_DIR, "media");
 const CATALOGUE_FILE = path.join(DATA_DIR, "catalogue.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
@@ -47,6 +50,7 @@ const LOCATION_WINDOW_FILE = path.join(DATA_DIR, "location-window.json");
 const PRESENCE_FILE = path.join(DATA_DIR, "presence.json");
 const BLOCKS_FILE = path.join(DATA_DIR, "blocks.json");
 const SUPER_BLOCKS_FILE = path.join(DATA_DIR, "super-blocks.json");
+const EOD_FILE = path.join(DATA_DIR, "eod.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -88,6 +92,7 @@ async function writeJson(file: string, data: unknown) {
 async function seedIfNeeded() {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
+  await fs.mkdir(MEDIA_DIR, { recursive: true });
 
   const catalogueExists = await fs
     .access(CATALOGUE_FILE)
@@ -185,6 +190,9 @@ async function seedIfNeeded() {
 
   const superExist = await fs.access(SUPER_BLOCKS_FILE).then(() => true).catch(() => false);
   if (!superExist) await writeJson(SUPER_BLOCKS_FILE, []);
+
+  const eodExist = await fs.access(EOD_FILE).then(() => true).catch(() => false);
+  if (!eodExist) await writeJson(EOD_FILE, []);
 
   await migrateUserPins();
   await migrateUserGrants();
@@ -642,16 +650,76 @@ export async function deleteSubmission(id: string) {
   });
 }
 
+async function readPhotoBytes(meta: PhotoMeta): Promise<Buffer> {
+  if (meta.relPath) {
+    try {
+      return await fs.readFile(path.join(MEDIA_DIR, assertSafeRelPath(meta.relPath)));
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT") throw err;
+    }
+  }
+  return fs.readFile(path.join(UPLOAD_DIR, meta.id));
+}
+
+async function unlinkPhotoFile(meta: PhotoMeta) {
+  if (meta.relPath) {
+    await fs.unlink(path.join(MEDIA_DIR, assertSafeRelPath(meta.relPath))).catch(() => undefined);
+  }
+  await fs.unlink(path.join(UPLOAD_DIR, meta.id)).catch(() => undefined);
+}
+
 export async function savePhotoFile(
   meta: PhotoMeta,
-  bytes: Buffer
+  bytes: Buffer,
+  place?: PhotoPlace
 ): Promise<PhotoMeta> {
   return withLock(async () => {
     const upright = bakeUprightImage(bytes, meta.mime);
     const store = await loadAll();
-    await fs.mkdir(UPLOAD_DIR, { recursive: true });
-    await fs.writeFile(path.join(UPLOAD_DIR, meta.id), upright.bytes);
-    const saved: PhotoMeta = { ...meta, mime: upright.mime, size: upright.bytes.length };
+    const loc: PhotoPlace = {
+      plantId: place?.plantId ?? meta.plantId,
+      plantName: place?.plantName ?? meta.plantName,
+      sectionId: place?.sectionId ?? meta.sectionId,
+      sectionName: place?.sectionName ?? meta.sectionName,
+      areaId: place?.areaId ?? meta.areaId,
+      areaName: place?.areaName ?? meta.areaName,
+      equipmentId: place?.equipmentId ?? meta.equipmentId,
+      equipmentTag: place?.equipmentTag ?? meta.equipmentTag,
+      equipmentName: place?.equipmentName ?? meta.equipmentName,
+      commonId: place?.commonId ?? meta.commonId,
+      commonTag: place?.commonTag ?? meta.commonTag,
+      commonName: place?.commonName ?? meta.commonName,
+      source: place?.source ?? meta.source,
+      date: place?.date,
+      techSlug: place?.techSlug ?? meta.uploadedBy,
+    };
+    const relPath = mediaRelPath(loc, {
+      id: meta.id,
+      filename: meta.filename,
+      mime: upright.mime,
+      kind: meta.kind,
+    });
+    const saved: PhotoMeta = {
+      ...meta,
+      mime: upright.mime,
+      size: upright.bytes.length,
+      plantId: loc.plantId,
+      plantName: loc.plantName,
+      sectionId: loc.sectionId,
+      sectionName: loc.sectionName,
+      areaId: loc.areaId,
+      areaName: loc.areaName,
+      equipmentTag: loc.equipmentTag,
+      equipmentName: loc.equipmentName,
+      commonTag: loc.commonTag,
+      commonName: loc.commonName,
+      source: loc.source,
+      relPath,
+    };
+    const dest = path.join(MEDIA_DIR, assertSafeRelPath(relPath));
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.writeFile(dest, upright.bytes);
     store.photos.push(saved);
     await writeJson(PHOTOS_FILE, store.photos);
     return saved;
@@ -663,8 +731,57 @@ export async function getPhoto(id: string) {
     const store = await loadAll();
     const meta = store.photos.find((p) => p.id === id);
     if (!meta) return null;
-    const bytes = await fs.readFile(path.join(UPLOAD_DIR, meta.id));
-    return { meta, bytes };
+    try {
+      const bytes = await readPhotoBytes(meta);
+      return { meta, bytes };
+    } catch {
+      return null;
+    }
+  });
+}
+
+export async function listPhotos(): Promise<PhotoMeta[]> {
+  return withLock(async () => {
+    const store = await loadAll();
+    return store.photos;
+  });
+}
+
+export async function listEodNotes(): Promise<EodNote[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    return readJson<EodNote[]>(EOD_FILE, []);
+  });
+}
+
+export async function getEodNote(id: string): Promise<EodNote | null> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<EodNote[]>(EOD_FILE, []);
+    return all.find((n) => n.id === id) ?? null;
+  });
+}
+
+export async function upsertEodNote(note: EodNote): Promise<EodNote> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<EodNote[]>(EOD_FILE, []);
+    const saved: EodNote = { ...note, savedAt: new Date().toISOString() };
+    const idx = all.findIndex((n) => n.id === saved.id);
+    const next = idx >= 0 ? all.map((n) => (n.id === saved.id ? saved : n)) : [saved, ...all];
+    await writeJson(EOD_FILE, next);
+    return saved;
+  });
+}
+
+export async function deleteEodNote(id: string) {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<EodNote[]>(EOD_FILE, []);
+    await writeJson(
+      EOD_FILE,
+      all.filter((n) => n.id !== id)
+    );
   });
 }
 
@@ -901,10 +1018,11 @@ async function fileSize(file: string): Promise<number> {
 
 export async function getStorageUsage() {
   await seedIfNeeded();
-  const [dataBytes, uploadsBytes, submissionsBytes, photosIndexBytes, locationsBytes] =
+  const [dataBytes, uploadsBytes, mediaBytes, submissionsBytes, photosIndexBytes, locationsBytes] =
     await Promise.all([
       dirSize(DATA_DIR),
       dirSize(UPLOAD_DIR),
+      dirSize(MEDIA_DIR),
       fileSize(SUBMISSIONS_FILE),
       fileSize(PHOTOS_FILE),
       fileSize(LOCATIONS_FILE),
@@ -913,7 +1031,8 @@ export async function getStorageUsage() {
   return {
     dataBytes,
     uploadsBytes,
-    otherBytes: Math.max(0, dataBytes - uploadsBytes),
+    mediaBytes,
+    otherBytes: Math.max(0, dataBytes - uploadsBytes - mediaBytes),
     submissionsBytes,
     photosIndexBytes,
     locationsBytes,
@@ -950,15 +1069,19 @@ export async function deleteSubmissionsByDateRange(from: string, to: string) {
       ...new Set(matched.flatMap(photoIdsFromSubmission).filter((id) => !keepPhotoIds.has(id))),
     ];
     store.submissions = keep;
-    store.photos = store.photos.filter((p) => !dropPhotoIds.includes(p.id));
+    const dropSet = new Set(dropPhotoIds);
+    const keepAlbum = store.photos.filter((p) => dropSet.has(p.id) && isAlbumPhoto(p));
+    const dropMetas = store.photos.filter((p) => dropSet.has(p.id) && !isAlbumPhoto(p));
+    store.photos = store.photos.filter((p) => !dropSet.has(p.id) || isAlbumPhoto(p));
     await writeJson(SUBMISSIONS_FILE, store.submissions);
     await writeJson(PHOTOS_FILE, store.photos);
-    for (const id of dropPhotoIds) {
-      await fs.unlink(path.join(UPLOAD_DIR, id)).catch(() => undefined);
+    for (const meta of dropMetas) {
+      await unlinkPhotoFile(meta);
     }
     return {
       deletedSubmissions: matched.length,
-      deletedPhotos: dropPhotoIds.length,
+      deletedPhotos: dropMetas.length,
+      keptAlbumPhotos: keepAlbum.length,
       from,
       to,
     };

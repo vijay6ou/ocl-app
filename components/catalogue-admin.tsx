@@ -2,12 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,6 +236,47 @@ export function CatalogueDayEditor({
     });
   }
 
+  function duplicateEquip(id: string) {
+    setSection((prev) => {
+      if (!prev) return prev;
+      const source = prev.equip.find((e) => e.id === id);
+      if (!source) return prev;
+      const usedIds = new Set(prev.equip.map((e) => e.id));
+      const usedTags = new Set(prev.equip.map((e) => e.tag));
+      const usedParams = new Set<string>();
+      const nextId = newEquipmentId(source.tag || "eq", usedIds);
+      usedIds.add(nextId);
+      let tag = source.tag.slice(0, 16);
+      if (usedTags.has(tag)) {
+        let n = 2;
+        let candidate = `${source.tag}-${n}`.slice(0, 16);
+        while (usedTags.has(candidate) && n < 50) {
+          n += 1;
+          candidate = `${source.tag}-${n}`.slice(0, 16);
+        }
+        tag = candidate;
+      }
+      const copy: Equipment = {
+        ...source,
+        id: nextId,
+        tag,
+        name: source.name.replace(/\s*\(copy\)\s*$/, "") + " (copy)",
+        runningParams: source.runningParams.map((p) => {
+          const pid = newParamId(p.label, usedParams);
+          usedParams.add(pid);
+          return { ...p, id: pid };
+        }),
+        runningChecks: [...source.runningChecks],
+        stoppedChecks: [...source.stoppedChecks],
+      };
+      const at = prev.equip.findIndex((e) => e.id === id);
+      const equip = [...prev.equip];
+      equip.splice(at + 1, 0, copy);
+      return { ...prev, equip };
+    });
+    toast.success("Copy is on this form. Change the tag and the one or two differences, then publish.");
+  }
+
   function insertSuper(superId: string) {
     const at = pickerAt ?? "start";
     setPickerAt(null);
@@ -450,6 +486,7 @@ export function CatalogueDayEditor({
               onDelete={() =>
                 setEquip(section.equip.filter((e) => e.id !== item.id))
               }
+              onCopy={() => duplicateEquip(item.id)}
             />
           ))}
         </div>
@@ -529,6 +566,7 @@ function EquipmentEditor({
   onChange,
   onMove,
   onDelete,
+  onCopy,
 }: {
   item: Equipment;
   index: number;
@@ -537,6 +575,7 @@ function EquipmentEditor({
   onChange: (patch: Partial<Equipment>) => void;
   onMove: (dir: -1 | 1) => void;
   onDelete: () => void;
+  onCopy: () => void;
 }) {
   const [open, setOpen] = useState(false);
   function addParam(at: "start" | "end" = "end") {
@@ -571,16 +610,22 @@ function EquipmentEditor({
                   <CardTitle className="text-lg">{item.name || "Untitled equipment"}</CardTitle>
                 </div>
               </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (confirm(`Delete ${item.tag || item.name} from this form?`)) onDelete();
-                }}
-              >
-                <Trash2 className="size-3.5" />
-                Delete
-              </Button>
+              <div className="flex gap-1">
+                <Button type="button" variant="outline" size="sm" onClick={onCopy}>
+                  <Copy className="size-3.5" />
+                  Copy card
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    if (confirm(`Delete ${item.tag || item.name} from this form?`)) onDelete();
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </Button>
+              </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="space-y-1.5">

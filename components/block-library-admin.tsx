@@ -32,6 +32,28 @@ export function BlockLibraryAdmin({
   const [creatingKit, setCreatingKit] = useState(false);
   const families = blockFamilies(blocks);
 
+  async function copyBlock(source: EquipmentBlock) {
+    const data = await api<{ block: EquipmentBlock; blocks: EquipmentBlock[] }>("/api/blocks", {
+      method: "POST",
+      body: JSON.stringify({ copyFrom: source.id }),
+    });
+    setBlocks(data.blocks);
+    setCreating(false);
+    setEditing(data.block);
+    toast.success("Copy is in the library. Change the one or two differences, then save.");
+  }
+
+  async function copyKit(source: SuperBlock) {
+    const data = await api<{ superBlock: SuperBlock; superBlocks: SuperBlock[] }>("/api/super-blocks", {
+      method: "POST",
+      body: JSON.stringify({ copyFrom: source.id }),
+    });
+    setSuperBlocks(data.superBlocks);
+    setCreatingKit(false);
+    setEditingKit(data.superBlock);
+    toast.success("Kit copy is in the library. Rename motors that differ, then save.");
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -41,8 +63,9 @@ export function BlockLibraryAdmin({
           </p>
           <h1 className="font-heading text-3xl font-semibold">Library</h1>
           <p className="text-sm text-muted-foreground">
-            Types are one motor or transformer. Super blocks are kits — a stacker with five
-            motors, a mill with ten. Changing a type still live-updates cards already on forms.
+            Types are one motor or transformer. Copy a type when motor 1 and motor 2 are the
+            same machine with one or two differences. Super blocks are kits. Changing a type
+            still live-updates cards already on forms.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -63,18 +86,24 @@ export function BlockLibraryAdmin({
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {superBlocks.map((kit) => (
-              <button
-                key={kit.id}
-                type="button"
-                onClick={() => setEditingKit(kit)}
-                className="rounded-xl bg-card p-4 text-left ring-1 ring-foreground/10"
-              >
-                <p className="font-heading text-lg font-semibold">{kit.title}</p>
-                <p className="text-sm text-muted-foreground">{kit.summary}</p>
-                <p className="mt-2 text-xs">
-                  {kit.members.length} machines · {kit.members.map((m) => m.name || m.tag).join(" · ")}
-                </p>
-              </button>
+              <div key={kit.id} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+                <button type="button" onClick={() => setEditingKit(kit)} className="w-full text-left">
+                  <p className="font-heading text-lg font-semibold">{kit.title}</p>
+                  <p className="text-sm text-muted-foreground">{kit.summary}</p>
+                  <p className="mt-2 text-xs">
+                    {kit.members.length} machines · {kit.members.map((m) => m.name || m.tag).join(" · ")}
+                  </p>
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => void copyKit(kit).catch((err) => toast.error(err instanceof Error ? err.message : "Could not copy."))}
+                >
+                  Copy kit
+                </Button>
+              </div>
             ))}
           </div>
         )}
@@ -84,24 +113,36 @@ export function BlockLibraryAdmin({
           <h2 className="mb-2 font-heading text-lg">{group.family}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {group.blocks.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => setEditing(b)}
-                className="rounded-xl bg-card p-4 text-left ring-1 ring-foreground/10"
-              >
-                <p className="font-heading text-lg font-semibold">{b.title}</p>
-                <p className="text-sm text-muted-foreground">{b.summary}</p>
-                <p className="mt-2 text-xs">{b.parts.join(" · ")}</p>
-              </button>
+              <div key={b.id} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+                <button type="button" onClick={() => setEditing(b)} className="w-full text-left">
+                  <p className="font-heading text-lg font-semibold">{b.title}</p>
+                  <p className="text-sm text-muted-foreground">{b.summary}</p>
+                  <p className="mt-2 text-xs">{b.parts.join(" · ")}</p>
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() =>
+                    void copyBlock(b).catch((err) =>
+                      toast.error(err instanceof Error ? err.message : "Could not copy.")
+                    )
+                  }
+                >
+                  Copy type
+                </Button>
+              </div>
             ))}
           </div>
         </section>
       ))}
       {editing ? (
         <BlockForm
+          key={editing.id}
           block={editing}
           onClose={() => setEditing(null)}
+          onCopy={() => copyBlock(editing)}
           onSave={async (block) => {
             const data = await api<{ blocks: EquipmentBlock[] }>("/api/blocks", {
               method: "PUT",
@@ -144,6 +185,7 @@ export function BlockLibraryAdmin({
       ) : null}
       {editingKit ? (
         <SuperBlockForm
+          key={editingKit.id}
           kit={editingKit}
           types={blocks}
           onClose={() => setEditingKit(null)}
@@ -156,6 +198,7 @@ export function BlockLibraryAdmin({
             setEditingKit(null);
             toast.success("Super block saved.");
           }}
+          onCopy={() => copyKit(editingKit)}
           onDelete={async () => {
             const data = await api<{ superBlocks: SuperBlock[] }>(`/api/super-blocks?id=${editingKit.id}`, {
               method: "DELETE",
@@ -192,11 +235,13 @@ function BlockForm({
   creating,
   onSave,
   onClose,
+  onCopy,
 }: {
   block: EquipmentBlock;
   creating?: boolean;
   onSave: (block: EquipmentBlock) => Promise<void>;
   onClose: () => void;
+  onCopy?: () => Promise<void> | void;
 }) {
   const [draft, setDraft] = useState(block);
   const [busy, setBusy] = useState(false);
@@ -277,9 +322,57 @@ function BlockForm({
               onChange={(e) => setDraft({ ...draft, runningChecks: e.target.value.split("\n") })}
             />
           </div>
+          <div>
+            <Label htmlFor="blk-stop">Stopped checks (one per line)</Label>
+            <Textarea
+              id="blk-stop"
+              value={draft.stoppedChecks.join("\n")}
+              onChange={(e) => setDraft({ ...draft, stoppedChecks: e.target.value.split("\n") })}
+            />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="blk-tag">Default tag</Label>
+              <Input
+                id="blk-tag"
+                value={draft.defaultTag}
+                onChange={(e) => setDraft({ ...draft, defaultTag: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="blk-name">Default name on the card</Label>
+              <Input
+                id="blk-name"
+                value={draft.defaultName}
+                onChange={(e) => setDraft({ ...draft, defaultName: e.target.value })}
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={draft.isHT}
+              onChange={(e) => setDraft({ ...draft, isHT: e.target.checked })}
+            />
+            High-tension machine
+          </label>
         </div>
-        <div className="border-t border-border p-3">
-          <Button type="submit" className="w-full" disabled={busy}>
+        <div className="flex gap-2 border-t border-border p-3">
+          {onCopy && !creating ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                void Promise.resolve(onCopy()).catch((err) =>
+                  toast.error(err instanceof Error ? err.message : "Could not copy.")
+                );
+              }}
+            >
+              Copy type
+            </Button>
+          ) : null}
+          <Button type="submit" className="flex-1" disabled={busy}>
             {busy ? "Saving…" : "Save block"}
           </Button>
         </div>
@@ -294,6 +387,7 @@ function SuperBlockForm({
   creating,
   onSave,
   onClose,
+  onCopy,
   onDelete,
 }: {
   kit: SuperBlock;
@@ -301,6 +395,7 @@ function SuperBlockForm({
   creating?: boolean;
   onSave: (kit: SuperBlock) => Promise<void>;
   onClose: () => void;
+  onCopy?: () => Promise<void> | void;
   onDelete?: () => Promise<void>;
 }) {
   const [draft, setDraft] = useState(kit);
@@ -452,6 +547,20 @@ function SuperBlockForm({
           </div>
         </div>
         <div className="flex gap-2 border-t border-border p-3">
+          {onCopy && !creating ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                void Promise.resolve(onCopy()).catch((err) =>
+                  toast.error(err instanceof Error ? err.message : "Could not copy.")
+                );
+              }}
+            >
+              Copy kit
+            </Button>
+          ) : null}
           {onDelete ? (
             <Button
               type="button"

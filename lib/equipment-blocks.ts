@@ -638,6 +638,35 @@ export const EQUIPMENT_BLOCKS: EquipmentBlock[] = [
   }),
 ];
 
+export function cloneEquipmentBlock(
+  source: EquipmentBlock,
+  newId: string,
+  title?: string
+): EquipmentBlock {
+  const name = title?.trim() || `${source.title} (copy)`;
+  return {
+    ...source,
+    id: newId,
+    title: name,
+    defaultName: source.defaultName,
+    summary: source.summary,
+    parts: [...source.parts],
+    params: source.params.map((p) => ({ ...p })),
+    paramIds: [...source.paramIds],
+    runningChecks: [...source.runningChecks],
+    stoppedChecks: [...source.stoppedChecks],
+  };
+}
+
+export function cloneSuperBlock(source: SuperBlock, newId: string, title?: string): SuperBlock {
+  return {
+    id: newId,
+    title: title?.trim() || `${source.title} (copy)`,
+    summary: source.summary,
+    members: source.members.map((m) => ({ ...m })),
+  };
+}
+
 export function equipmentBlock(id: string, library: EquipmentBlock[] = EQUIPMENT_BLOCKS) {
   return library.find((block) => block.id === id) ?? null;
 }

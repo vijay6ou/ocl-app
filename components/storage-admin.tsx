@@ -13,6 +13,7 @@ import { defaultHistoryRange } from "@/lib/submit-time";
 type Usage = {
   dataBytes: number;
   uploadsBytes: number;
+  mediaBytes?: number;
   otherBytes: number;
   submissionsBytes: number;
   photosIndexBytes: number;
@@ -112,8 +113,9 @@ export function StorageAdmin() {
       <div>
         <h1 className="font-heading text-2xl font-semibold">Plant storage</h1>
         <p className="text-sm text-muted-foreground">
-          Disk used by saved rounds, photos, and location check-ins on the plant server. Catalogue
-          and people are not included in date-range delete.
+          Disk used by saved rounds, photos, and location check-ins on the plant server. Equipment
+          albums under plant → section → area stay when you delete old rounds. Catalogue and people
+          are not included in date-range delete.
         </p>
       </div>
 
@@ -131,8 +133,10 @@ export function StorageAdmin() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Photo files</CardTitle>
           </CardHeader>
           <CardContent className="font-heading text-2xl font-semibold">
-            {fmtBytes(usage.uploadsBytes)}
-            <p className="mt-1 text-xs font-normal text-muted-foreground">{usage.photoCount} photos</p>
+            {fmtBytes((usage.mediaBytes ?? 0) + usage.uploadsBytes)}
+            <p className="mt-1 text-xs font-normal text-muted-foreground">
+              {usage.photoCount} photos · plant folders {fmtBytes(usage.mediaBytes ?? 0)}
+            </p>
           </CardContent>
         </Card>
         <Card>

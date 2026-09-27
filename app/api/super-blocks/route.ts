@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireRole, requireUser } from "@/lib/auth";
-import type { SuperBlock } from "@/lib/equipment-blocks";
+import { cloneSuperBlock, type SuperBlock } from "@/lib/equipment-blocks";
 import { isSafeSectionId, newPlantId } from "@/lib/section-ids";
 import { getBlocks, getSuperBlocks, saveSuperBlocks, upsertSuperBlock } from "@/lib/store";
 
@@ -29,7 +29,20 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     await requireRole("admin");
-    const body = (await req.json()) as Partial<SuperBlock>;
+    const body = (await req.json()) as Partial<SuperBlock> & { copyFrom?: string };
+    if (body.copyFrom) {
+      const current = await getSuperBlocks();
+      const source = current.find((b) => b.id === body.copyFrom);
+      if (!source) return NextResponse.json({ error: "That super block is not in the library." }, { status: 404 });
+      const title = body.title?.trim() || `${source.title} (copy)`;
+      const used = new Set(current.map((b) => b.id));
+      const block = cloneSuperBlock(source, newPlantId(title, used, "kit"), title);
+      if (!isSafeSectionId(block.id)) {
+        return NextResponse.json({ error: "Could not make a valid super block id." }, { status: 400 });
+      }
+      const superBlocks = await upsertSuperBlock(block);
+      return NextResponse.json({ superBlock: block, superBlocks }, { status: 201 });
+    }
     const title = body.title?.trim() ?? "";
     if (!title) return NextResponse.json({ error: "Super block name is required." }, { status: 400 });
     const members = membersOf(body);

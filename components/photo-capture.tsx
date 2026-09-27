@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, ImageIcon, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import type { PhotoKind, PhotoRef } from "@/lib/types";
+import type { PhotoKind, PhotoRef, PhotoSource } from "@/lib/types";
+import type { PhotoPlace } from "@/lib/media-path";
 import { sanitizePublicText } from "@/lib/public-text";
 import {
   captureWithNative,
@@ -25,6 +26,9 @@ export function PhotoCapture({
   gallery = true,
   label = "Rear camera",
   hint,
+  place,
+  source,
+  date,
   onChange,
 }: {
   photos: PhotoRef[];
@@ -36,6 +40,9 @@ export function PhotoCapture({
   gallery?: boolean;
   label?: string;
   hint?: string;
+  place?: PhotoPlace;
+  source?: PhotoSource;
+  date?: string;
   onChange: (photos: PhotoRef[]) => void;
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -67,9 +74,30 @@ export function PhotoCapture({
       const fd = new FormData();
       fd.append("file", file, filename);
       fd.append("kind", kind);
-      if (equipmentId) fd.append("equipmentId", equipmentId);
-      if (commonId) fd.append("commonId", commonId);
+      const equipId = place?.equipmentId || equipmentId;
+      const commId = place?.commonId || commonId;
+      if (equipId) fd.append("equipmentId", equipId);
+      if (commId) fd.append("commonId", commId);
       if (checkIndex !== undefined) fd.append("checkIndex", String(checkIndex));
+      if (source || place?.source) fd.append("source", source || place?.source || "form");
+      if (date || place?.date) fd.append("date", date || place?.date || "");
+      if (place) {
+        const fields: [string, string | undefined][] = [
+          ["plantId", place.plantId],
+          ["plantName", place.plantName],
+          ["sectionId", place.sectionId],
+          ["sectionName", place.sectionName],
+          ["areaId", place.areaId],
+          ["areaName", place.areaName],
+          ["equipmentTag", place.equipmentTag],
+          ["equipmentName", place.equipmentName],
+          ["commonTag", place.commonTag],
+          ["commonName", place.commonName],
+        ];
+        for (const [key, value] of fields) {
+          if (value) fd.append(key, value);
+        }
+      }
       const data = await api<{ photo: Uploaded }>("/api/photos", {
         method: "POST",
         body: fd,

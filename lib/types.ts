@@ -132,7 +132,17 @@ export type ParamValue = {
   v?: string;
 };
 
-export type PhotoKind = "running" | "stopped" | "remark" | "common" | "selfie";
+export type PhotoKind =
+  | "running"
+  | "stopped"
+  | "remark"
+  | "common"
+  | "selfie"
+  | "eod"
+  | "album"
+  | "nameplate";
+
+export type PhotoSource = "form" | "eod" | "album";
 
 export type PhotoMeta = {
   id: string;
@@ -145,6 +155,18 @@ export type PhotoMeta = {
   commonId?: string;
   kind: PhotoKind;
   checkIndex?: number;
+  plantId?: string;
+  plantName?: string;
+  sectionId?: string;
+  sectionName?: string;
+  areaId?: string;
+  areaName?: string;
+  equipmentTag?: string;
+  equipmentName?: string;
+  commonTag?: string;
+  commonName?: string;
+  relPath?: string;
+  source?: PhotoSource;
 };
 
 export type PhotoRef = {
@@ -257,4 +279,58 @@ export type DraftState = {
   };
   equip: Record<string, EquipState>;
   common: Record<string, CommonState>;
+};
+
+export type EodBlockKind =
+  | "heading"
+  | "text"
+  | "bullets"
+  | "numbered"
+  | "checklist"
+  | "photo"
+  | "count"
+  | "time"
+  | "callout"
+  | "handover"
+  | "spoken";
+
+export type EodListItem = {
+  id: string;
+  text: string;
+  done?: boolean;
+};
+
+export type EodBlock = {
+  id: string;
+  kind: EodBlockKind;
+  text?: string;
+  items?: EodListItem[];
+  photos?: PhotoRef[];
+  label?: string;
+  value?: string;
+  unit?: string;
+  at?: string;
+  tone?: "info" | "warn" | "urgent";
+  from?: string;
+  to?: string;
+};
+
+export type EodStatus = "DRAFT" | "SUBMITTED";
+
+export type EodNote = {
+  id: string;
+  savedAt: string;
+  submittedAt?: string;
+  status: EodStatus;
+  date: string;
+  shift: ShiftCode | "";
+  techId: string;
+  tech: string;
+  plantId?: string;
+  plantName?: string;
+  sectionId?: string;
+  sectionName?: string;
+  areaId?: string;
+  areaName?: string;
+  blocks: EodBlock[];
 };

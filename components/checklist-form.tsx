@@ -34,6 +34,8 @@ import {
   type ShiftCode,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { pathForArea } from "@/lib/hierarchy";
+import type { PhotoPlace } from "@/lib/media-path";
 
 type Pane = "equipment" | "common" | "summary" | "update";
 
@@ -162,6 +164,20 @@ export function ChecklistForm({
   }, [user, dayKey]);
 
   const section = dayKey && catalogue ? catalogue.days[dayKey] : null;
+  const placeBase: PhotoPlace | undefined = useMemo(() => {
+    if (!catalogue || !dayKey) return undefined;
+    const path = pathForArea(catalogue, dayKey);
+    return {
+      plantId: path.plant?.id,
+      plantName: path.plant?.name,
+      sectionId: path.section?.id,
+      sectionName: path.section?.name,
+      areaId: path.areaId,
+      areaName: path.area?.label,
+      source: "form",
+      date,
+    };
+  }, [catalogue, dayKey, date]);
 
   useEffect(() => {
     if (!user || !dayKey || !section || skipNextSave.current) return;
@@ -393,6 +409,7 @@ export function ChecklistForm({
               item={item}
               st={equip[item.id] ?? emptyEquipState()}
               open={openId === item.id}
+              place={placeBase}
               onToggle={() =>
               setOpenId((cur) => (cur === item.id ? null : item.id))
             }
@@ -442,7 +459,15 @@ export function ChecklistForm({
                               facing="environment"
                               gallery
                               label="Rear camera"
-                              hint="Rear camera or insert from this phone’s gallery."
+                              hint="Rear camera or insert from this phone’s gallery. Saved under this device in Files."
+                              place={{
+                                ...placeBase,
+                                commonId: item.id,
+                                commonTag: item.tag,
+                                commonName: item.device,
+                              }}
+                              source="form"
+                              date={date}
                               onChange={(photos) => patchCommon(item.id, { photos })}
                             />
                           </div>
@@ -556,12 +581,14 @@ function EquipmentCard({
   item,
   st,
   open,
+  place,
   onToggle,
   onPatch,
 }: {
   item: Equipment;
   st: EquipState;
   open: boolean;
+  place?: PhotoPlace;
   onToggle: () => void;
   onPatch: (patch: Partial<EquipState>) => void;
 }) {
@@ -710,7 +737,15 @@ function EquipmentCard({
                 facing="environment"
                 gallery
                 label="Rear camera"
-                hint="Rear camera or insert from this phone’s gallery."
+                hint="Rear camera or insert from this phone’s gallery. Every shot of this motor is kept in Files under its tag."
+                place={{
+                  ...place,
+                  equipmentId: item.id,
+                  equipmentTag: item.tag,
+                  equipmentName: item.name,
+                }}
+                source="form"
+                date={place?.date}
                 onChange={(photos) => onPatch({ photos })}
               />
             </div>

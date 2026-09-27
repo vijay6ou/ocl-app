@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireRole, requireUser } from "@/lib/auth";
-import { EQUIPMENT_BLOCKS, type EquipmentBlock } from "@/lib/equipment-blocks";
+import { cloneEquipmentBlock, EQUIPMENT_BLOCKS, type EquipmentBlock } from "@/lib/equipment-blocks";
 import { isSafeSectionId, newPlantId } from "@/lib/section-ids";
 import { getBlocks, getCatalogue, getSuperBlocks, saveBlocks, upsertBlock } from "@/lib/store";
 
@@ -19,10 +19,22 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     await requireRole("admin");
-    const body = (await req.json()) as Partial<EquipmentBlock>;
+    const body = (await req.json()) as Partial<EquipmentBlock> & { copyFrom?: string };
+    const current = await getBlocks();
+    if (body.copyFrom) {
+      const source = current.find((b) => b.id === body.copyFrom);
+      if (!source) return NextResponse.json({ error: "That block is not in the library." }, { status: 404 });
+      const title = body.title?.trim() || `${source.title} (copy)`;
+      const used = new Set(current.map((b) => b.id));
+      const block = cloneEquipmentBlock(source, newPlantId(title, used, "blk"), title);
+      if (!isSafeSectionId(block.id)) {
+        return NextResponse.json({ error: "Could not make a valid block id." }, { status: 400 });
+      }
+      const blocks = await upsertBlock(block);
+      return NextResponse.json({ block, blocks }, { status: 201 });
+    }
     const title = body.title?.trim() ?? "";
     if (!title) return NextResponse.json({ error: "Block name is required." }, { status: 400 });
-    const current = await getBlocks();
     const used = new Set(current.map((b) => b.id));
     const block: EquipmentBlock = {
       id: newPlantId(title, used, "blk"),
