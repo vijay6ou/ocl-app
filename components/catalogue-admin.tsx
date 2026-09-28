@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -133,6 +133,10 @@ export function CatalogueDayEditor({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const skipDraftAutosave = useRef(true);
   const [pickerAt, setPickerAt] = useState<"start" | "end" | null>(null);
   const [blocks, setBlocks] = useState<EquipmentBlock[]>([]);
   const [superBlocks, setSuperBlocks] = useState<SuperBlock[]>([]);
@@ -159,6 +163,27 @@ export function CatalogueDayEditor({
       .catch(() => undefined);
   }, [day]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void api<{ draft: { section: DayCatalogue; savedAt: string } | null }>(
+      `/api/catalogue/drafts?areaId=${encodeURIComponent(day)}`
+    )
+      .then((data) => {
+        if (cancelled) return;
+        if (data.draft?.section) {
+          setSection(structuredClone(data.draft.section));
+          setDraftSavedAt(data.draft.savedAt);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setDraftReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [day]);
+
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -174,8 +199,38 @@ export function CatalogueDayEditor({
     }
   }, [day]);
 
+  async function saveDraft(quiet = false) {
+    if (!section) return;
+    if (!quiet) setDraftSaving(true);
+    try {
+      const data = await api<{ draft: { savedAt: string } }>("/api/catalogue/drafts", {
+        method: "PUT",
+        body: JSON.stringify({ areaId: day, section }),
+      });
+      setDraftSavedAt(data.draft.savedAt);
+      if (!quiet) toast.success("Draft saved. Technicians still see the last published form.");
+    } catch (err) {
+      if (!quiet) toast.error(err instanceof Error ? err.message : "Could not save the draft.");
+    } finally {
+      if (!quiet) setDraftSaving(false);
+    }
+  }
+
+  async function discardDraft() {
+    skipDraftAutosave.current = true;
+    try {
+      await api(`/api/catalogue/drafts?areaId=${encodeURIComponent(day)}`, { method: "DELETE" });
+      setDraftSavedAt(null);
+      await reload();
+      toast.success("Draft discarded. Showing the live published form.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not discard the draft.");
+    }
+  }
+
   async function save() {
     if (!section) return;
+    skipDraftAutosave.current = true;
     setSaving(true);
     try {
       const data = await api<{ catalogue: Catalogue }>("/api/catalogue", {
@@ -184,6 +239,10 @@ export function CatalogueDayEditor({
       });
       const next = data.catalogue.days[day];
       setSection(next ? structuredClone(next) : section);
+      await api(`/api/catalogue/drafts?areaId=${encodeURIComponent(day)}`, { method: "DELETE" }).catch(
+        () => undefined
+      );
+      setDraftSavedAt(null);
       toast.success("Form published. Technicians pick this up the next time they open the subsection.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not publish catalogue.");
@@ -191,6 +250,19 @@ export function CatalogueDayEditor({
       setSaving(false);
     }
   }
+
+  useEffect(() => {
+    if (!draftReady || !section) return;
+    if (skipDraftAutosave.current) {
+      skipDraftAutosave.current = false;
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      void saveDraft(true);
+    }, 2000);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftReady, section]);
 
   if (loading) return <LoadingState label="Loading section…" />;
   if (error) return <ErrorState message={error} onRetry={() => void reload()} />;
@@ -367,12 +439,31 @@ export function CatalogueDayEditor({
           </h1>
           <p className="text-sm text-muted-foreground">
             Add a super block to drop every motor in a kit, or one type at a time. Copy this whole
-            form onto another area when two places are the same.
+            form onto another area when two places are the same. Use <span className="font-medium text-foreground">Save draft</span> while you fill
+            — leaving this page will not throw the half-filled card away. Publish when technicians
+            should see it.
           </p>
+          {draftSavedAt ? (
+            <p className="mt-2 text-sm text-amber-800">
+              Unpublished draft on the plant server
+              {draftSavedAt ? ` · saved ${draftSavedAt.slice(11, 16)} UTC` : ""}. Technicians still
+              run the last published form.
+            </p>
+          ) : null}
         </div>
-        <Button onClick={() => void save()} disabled={saving}>
-          {saving ? "Publishing…" : "Publish to plant server"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => void saveDraft()} disabled={draftSaving || saving}>
+            {draftSaving ? "Saving draft…" : "Save draft"}
+          </Button>
+          {draftSavedAt ? (
+            <Button type="button" variant="ghost" onClick={() => void discardDraft()} disabled={saving}>
+              Discard draft
+            </Button>
+          ) : null}
+          <Button onClick={() => void save()} disabled={saving}>
+            {saving ? "Publishing…" : "Publish to plant server"}
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -550,9 +641,14 @@ export function CatalogueDayEditor({
       ))}
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 p-3 shadow-[0_-8px_24px_rgba(13,33,55,0.08)] backdrop-blur md:hidden">
-        <Button className="w-full" onClick={() => void save()} disabled={saving}>
-          {saving ? "Publishing…" : "Publish to plant server"}
-        </Button>
+        <div className="flex gap-2">
+          <Button className="flex-1" variant="outline" onClick={() => void saveDraft()} disabled={draftSaving || saving}>
+            {draftSaving ? "Saving…" : "Save draft"}
+          </Button>
+          <Button className="flex-1" onClick={() => void save()} disabled={saving}>
+            {saving ? "Publishing…" : "Publish"}
+          </Button>
+        </div>
       </div>
     </div>
   );

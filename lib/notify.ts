@@ -17,11 +17,13 @@ import {
 import { sanitizePublicText } from "@/lib/public-text";
 import { bakeUprightImage } from "@/lib/image-orient";
 import type { PhotoRef, Submission } from "@/lib/types";
+import { sendTelegramText, type TelegramChannelStatus } from "@/lib/telegram";
 
 export type NotifyChannelStatus = "ok" | "skipped" | "failed";
 
 export type NotifyResult = {
   discord: NotifyChannelStatus;
+  telegram: TelegramChannelStatus;
   warning?: string;
 };
 
@@ -258,14 +260,34 @@ async function sendDiscord(
 }
 
 function warningFor(result: NotifyResult) {
-  if (result.discord === "failed") {
-    return sanitizePublicText("Record saved on the plant server. Discord delivery failed.");
+  const failed = [result.discord === "failed" ? "Discord" : "", result.telegram === "failed" ? "Telegram" : ""].filter(
+    Boolean
+  );
+  if (failed.length) {
+    return sanitizePublicText(`Record saved on the plant server. ${failed.join(" and ")} delivery failed.`);
   }
   return undefined;
 }
 
+async function sendTelegram(record: Submission): Promise<TelegramChannelStatus> {
+  try {
+    const full = formatFullRound(record);
+    const notes = record.dayNotes?.trim() || "(none)";
+    const header = `${roundHeader(record)}\n\nDay notes\n${notes}`;
+    if (full.length <= 3900) {
+      return await sendTelegramText(full);
+    }
+    return await sendTelegramText(header.slice(0, 3900), {
+      name: fullFormFilename(record),
+      bytes: Buffer.from(full, "utf8"),
+    });
+  } catch {
+    return "failed";
+  }
+}
+
 export async function notifySubmission(record: Submission): Promise<NotifyResult> {
-  const result: NotifyResult = { discord: "skipped" };
+  const result: NotifyResult = { discord: "skipped", telegram: "skipped" };
   let discordParts: { kind: string; content: string; files: string[]; messageId?: string }[] | undefined;
   try {
     const photos = await loadPhotos(record);
@@ -277,8 +299,14 @@ export async function notifySubmission(record: Submission): Promise<NotifyResult
     } catch {
       result.discord = discordWebhook() ? "failed" : "skipped";
     }
+    try {
+      result.telegram = await sendTelegram(record);
+    } catch {
+      result.telegram = "failed";
+    }
   } catch {
     result.discord = discordWebhook() ? "failed" : "skipped";
+    result.telegram = "failed";
   }
   result.warning = warningFor(result);
   try {
@@ -290,6 +318,7 @@ export async function notifySubmission(record: Submission): Promise<NotifyResult
           recordId: record.id,
           date: record.meta.date,
           discord: result.discord,
+          telegram: result.telegram,
           warning: result.warning,
           discordParts: discordParts ?? [],
         },

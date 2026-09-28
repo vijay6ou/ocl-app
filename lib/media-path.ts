@@ -3,6 +3,7 @@ import {
   pathForArea,
   sectionsOfPlant,
 } from "@/lib/hierarchy";
+import type { FileNote } from "@/lib/file-docs";
 import type { Catalogue, PhotoMeta, PublicUser } from "@/lib/types";
 
 export type PhotoPlace = {
@@ -152,6 +153,28 @@ export function mediaRelPath(
   return `${plant}/${section}/${area}/_shift-notes/${date}/${date}-${kind}-${short}.${ext}`;
 }
 
+export function noteRelPath(
+  place: PhotoPlace,
+  meta: { id: string; kind: string; title?: string }
+): string {
+  const date = (place.date || new Date().toISOString().slice(0, 10)).replace(/[^0-9-]/g, "") ||
+    new Date().toISOString().slice(0, 10);
+  const short = meta.id.replace(/-/g, "").slice(0, 8);
+  const kind = slugSegment(meta.kind || "note");
+  const plant = slugSegment(place.plantId || place.plantName || "plant");
+  const section = slugSegment(place.sectionId || place.sectionName || "section");
+  const area = slugSegment(place.areaId || place.areaName || "area");
+  if (place.commonId) {
+    const folder = equipmentFolder(place.commonId);
+    return `${plant}/${section}/${area}/_common/${folder}/${date}-${kind}-${short}.txt`;
+  }
+  if (place.equipmentId) {
+    const folder = equipmentFolder(place.equipmentId);
+    return `${plant}/${section}/${area}/${folder}/${date}-${kind}-${short}.txt`;
+  }
+  return `${plant}/${section}/${area}/_shift-notes/${date}/${date}-${kind}-${short}.txt`;
+}
+
 export function fillPlaceFromCatalogue(catalogue: Catalogue, place: PhotoPlace): PhotoPlace {
   const located = locateEquipment(catalogue, place.equipmentId, place.commonId);
   const areaId = located?.areaId || place.areaId;
@@ -182,19 +205,32 @@ export type AlbumFile = {
   url: string;
 };
 
+export type AlbumNote = {
+  id: string;
+  title: string;
+  kind: FileNote["kind"];
+  uploadedAt: string;
+  preview: string;
+};
+
 export type AlbumEquipment = {
   key: string;
   equipmentId?: string;
   tag: string;
   name: string;
   photoCount: number;
+  noteCount: number;
+  itemCount: number;
   photos: AlbumFile[];
+  notes: AlbumNote[];
 };
 
 export type AlbumArea = {
   areaId: string;
   label: string;
   photoCount: number;
+  noteCount: number;
+  itemCount: number;
   equipment: AlbumEquipment[];
 };
 
@@ -202,6 +238,8 @@ export type AlbumSection = {
   sectionId: string;
   name: string;
   photoCount: number;
+  noteCount: number;
+  itemCount: number;
   areas: AlbumArea[];
 };
 
@@ -209,6 +247,8 @@ export type AlbumPlant = {
   plantId: string;
   name: string;
   photoCount: number;
+  noteCount: number;
+  itemCount: number;
   sections: AlbumSection[];
 };
 
@@ -223,23 +263,48 @@ function asFile(photo: PhotoMeta): AlbumFile {
   };
 }
 
-function photoAreaId(catalogue: Catalogue, photo: PhotoMeta) {
+function photoAreaId(catalogue: Catalogue, photo: PhotoMeta | FileNote) {
   return locateEquipment(catalogue, photo.equipmentId, photo.commonId)?.areaId || photo.areaId;
 }
 
-function photoVisible(photo: PhotoMeta, catalogue: Catalogue, user: PublicUser) {
-  if (photo.kind === "selfie") return user.role === "admin" || photo.uploadedBy === user.id;
+function photoVisible(photo: PhotoMeta | FileNote, catalogue: Catalogue, user: PublicUser) {
+  if ("kind" in photo && photo.kind === "selfie") return user.role === "admin" || photo.uploadedBy === user.id;
   const areaId = photoAreaId(catalogue, photo);
   if (!areaId) return user.role === "admin";
   return canSeeArea(user, catalogue, areaId);
 }
 
+function emptyEquipRow(partial: Omit<AlbumEquipment, "photoCount" | "noteCount" | "itemCount" | "photos" | "notes">): AlbumEquipment {
+  return {
+    ...partial,
+    photoCount: 0,
+    noteCount: 0,
+    itemCount: 0,
+    photos: [],
+    notes: [],
+  };
+}
+
+function fileKey(
+  catalogue: Catalogue,
+  item: { equipmentId?: string; commonId?: string }
+) {
+  const located = locateEquipment(catalogue, item.equipmentId, item.commonId);
+  if (located?.equipmentId) return located.equipmentId;
+  if (located?.commonId) return `common:${located.commonId}`;
+  if (item.equipmentId) return item.equipmentId;
+  if (item.commonId) return `common:${item.commonId}`;
+  return "_shift-notes";
+}
+
 export function buildAlbumTree(
   catalogue: Catalogue,
   photos: PhotoMeta[],
-  user: PublicUser
+  user: PublicUser,
+  notes: FileNote[] = []
 ): AlbumPlant[] {
   const visible = photos.filter((p) => photoVisible(p, catalogue, user));
+  const visibleNotes = notes.filter((n) => photoVisible(n, catalogue, user));
 
   const plants: AlbumPlant[] = [];
 
@@ -253,94 +318,111 @@ export function buildAlbumTree(
         const areaPhotos = visible.filter(
           (p) => p.kind !== "selfie" && photoAreaId(catalogue, p) === areaId
         );
+        const areaNotes = visibleNotes.filter((n) => photoAreaId(catalogue, n) === areaId);
         const equipMap = new Map<string, AlbumEquipment>();
 
         for (const eq of day?.equip ?? []) {
-          equipMap.set(eq.id, {
+          equipMap.set(eq.id, emptyEquipRow({
             key: eq.id,
             equipmentId: eq.id,
             tag: eq.tag,
             name: eq.name,
-            photoCount: 0,
-            photos: [],
-          });
+          }));
         }
         for (const item of day?.common.flatMap((g) => g.items) ?? []) {
           const key = `common:${item.id}`;
-          equipMap.set(key, {
+          equipMap.set(key, emptyEquipRow({
             key,
             tag: item.tag,
             name: item.device,
-            photoCount: 0,
-            photos: [],
-          });
+          }));
         }
 
         const notesKey = "_shift-notes";
-        for (const photo of areaPhotos) {
-          const located = locateEquipment(catalogue, photo.equipmentId, photo.commonId);
-          const key = located?.equipmentId
-            ? located.equipmentId
-            : located?.commonId
-              ? `common:${located.commonId}`
-              : photo.equipmentId
-                ? photo.equipmentId
-                : photo.commonId
-                  ? `common:${photo.commonId}`
-                  : notesKey;
+        function ensureRow(
+          item: { equipmentId?: string; commonId?: string; equipmentTag?: string; equipmentName?: string; commonTag?: string; commonName?: string }
+        ) {
+          const located = locateEquipment(catalogue, item.equipmentId, item.commonId);
+          const key = fileKey(catalogue, item);
           let row = equipMap.get(key);
           if (!row) {
-            row = {
+            row = emptyEquipRow({
               key,
-              equipmentId: located?.equipmentId || photo.equipmentId,
-              tag: located?.equipmentTag || located?.commonTag || photo.equipmentTag || photo.commonTag || (key === notesKey ? "NOTES" : key),
+              equipmentId: located?.equipmentId || item.equipmentId,
+              tag: located?.equipmentTag || located?.commonTag || item.equipmentTag || item.commonTag || (key === notesKey ? "NOTES" : key),
               name:
                 located?.equipmentName ||
                 located?.commonName ||
-                photo.equipmentName ||
-                photo.commonName ||
-                (key === notesKey ? "Day notes from the round" : "Other photos"),
-              photoCount: 0,
-              photos: [],
-            };
+                item.equipmentName ||
+                item.commonName ||
+                (key === notesKey ? "Notes for this area" : "Other files"),
+            });
             equipMap.set(key, row);
           }
+          return row;
+        }
+
+        for (const photo of areaPhotos) {
+          const row = ensureRow(photo);
           row.photos.push(asFile(photo));
           row.photoCount += 1;
+          row.itemCount += 1;
+        }
+        for (const note of areaNotes) {
+          const row = ensureRow(note);
+          row.notes.push({
+            id: note.id,
+            title: note.title,
+            kind: note.kind,
+            uploadedAt: note.uploadedAt,
+            preview: note.body.slice(0, 180),
+          });
+          row.noteCount += 1;
+          row.itemCount += 1;
         }
 
         for (const row of equipMap.values()) {
           row.photos.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+          row.notes.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
         }
 
         const equipment = [...equipMap.values()].sort((a, b) => {
-          if (b.photoCount !== a.photoCount) return b.photoCount - a.photoCount;
+          if (b.itemCount !== a.itemCount) return b.itemCount - a.itemCount;
           return a.name.localeCompare(b.name);
         });
         const photoCount = equipment.reduce((n, e) => n + e.photoCount, 0);
+        const noteCount = equipment.reduce((n, e) => n + e.noteCount, 0);
         areas.push({
           areaId,
           label: day?.label ?? areaId,
           photoCount,
+          noteCount,
+          itemCount: photoCount + noteCount,
           equipment,
         });
       }
       const photoCount = areas.reduce((n, a) => n + a.photoCount, 0);
+      const noteCount = areas.reduce((n, a) => n + a.noteCount, 0);
       if (areas.length) {
         sections.push({
           sectionId: section.id,
           name: section.name,
           photoCount,
+          noteCount,
+          itemCount: photoCount + noteCount,
           areas,
         });
       }
     }
     const photoCount = sections.reduce((n, s) => n + s.photoCount, 0);
+    const noteCount = sections.reduce((n, s) => n + s.noteCount, 0);
     if (sections.length) {
       plants.push({
         plantId: plant.id,
         name: plant.name,
         photoCount,
+        noteCount,
+        itemCount: photoCount + noteCount,
         sections,
       });
     }

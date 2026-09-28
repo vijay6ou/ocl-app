@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Factory, FolderOpen, ImageIcon } from "lucide-react";
+import { ChevronLeft, Factory, FileText, FolderOpen, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { PhotoCapture } from "@/components/photo-capture";
 import { api } from "@/lib/api";
-import type { AlbumArea, AlbumEquipment, AlbumPlant, AlbumSection } from "@/lib/media-path";
+import type { AlbumArea, AlbumEquipment, AlbumNote, AlbumPlant, AlbumSection } from "@/lib/media-path";
+import type { FileNoteKind } from "@/lib/file-docs";
 import type { PhotoKind, PhotoRef } from "@/lib/types";
 
 type TreeResponse = { tree: AlbumPlant[] };
@@ -107,13 +111,13 @@ export function FilesAlbum() {
     <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4 md:py-6">
       <div>
         <p className="text-[11px] font-semibold tracking-[0.16em] text-primary uppercase">
-          Equipment photos
+          Photos and text
         </p>
         <h1 className="font-heading text-3xl font-semibold">Files</h1>
         <p className="text-sm text-muted-foreground">
-          Photos sit in the same tree as the plant. Each machine’s folder is its{" "}
-          <span className="font-medium text-foreground">equipment ID</span>. Photos you take on the
-          round land here automatically. You can also add a shot from this page.
+          Each machine’s folder is its <span className="font-medium text-foreground">equipment ID</span>.
+          Round photos land here automatically. You can also add a photo or a text note / log / paste
+          from this page.
         </p>
       </div>
 
@@ -133,7 +137,7 @@ export function FilesAlbum() {
         tree.length === 0 ? (
           <EmptyState
             title="No locations assigned"
-            message="Ask an admin to assign you a plant, section, or area. Photos of those machines will collect here."
+            message="Ask an admin to assign you a plant, section, or area. Photos and notes of those machines will collect here."
           />
         ) : (
           <FolderList
@@ -141,7 +145,9 @@ export function FilesAlbum() {
               key: p.plantId,
               title: p.name,
               blurb: `${p.sections.length} sections`,
-              count: p.photoCount,
+              count: p.itemCount,
+              photos: p.photoCount,
+              notes: p.noteCount,
               icon: "plant" as const,
               onOpen: () => setCrumb({ level: "plant", plant: p }),
             }))}
@@ -156,7 +162,9 @@ export function FilesAlbum() {
             key: s.sectionId,
             title: s.name,
             blurb: `${s.areas.length} areas`,
-            count: s.photoCount,
+            count: s.itemCount,
+            photos: s.photoCount,
+            notes: s.noteCount,
             icon: "folder" as const,
             onOpen: () => setCrumb({ level: "section", plant: live.plant, section: s }),
           }))}
@@ -170,7 +178,9 @@ export function FilesAlbum() {
             key: a.areaId,
             title: a.label,
             blurb: `${a.equipment.length} machines`,
-            count: a.photoCount,
+            count: a.itemCount,
+            photos: a.photoCount,
+            notes: a.noteCount,
             icon: "folder" as const,
             onOpen: () =>
               setCrumb({ level: "area", plant: live.plant, section: live.section, area: a }),
@@ -185,7 +195,9 @@ export function FilesAlbum() {
             key: e.key,
             title: e.name,
             blurb: e.equipmentId ? `${e.tag} · ${e.equipmentId}` : e.tag,
-            count: e.photoCount,
+            count: e.itemCount,
+            photos: e.photoCount,
+            notes: e.noteCount,
             thumb: e.photos[0]?.url,
             icon: "equip" as const,
             onOpen: () =>
@@ -207,10 +219,19 @@ export function FilesAlbum() {
           area={live.area}
           equip={live.equip}
           onUploaded={() => void load()}
+          onNote={() => void load()}
         />
       ) : null}
     </div>
   );
+}
+
+function countLabel(photos: number, notes: number) {
+  if (!photos && !notes) return "empty";
+  const bits: string[] = [];
+  if (photos) bits.push(`${photos} ${photos === 1 ? "photo" : "photos"}`);
+  if (notes) bits.push(`${notes} ${notes === 1 ? "note" : "notes"}`);
+  return bits.join(" · ");
 }
 
 function FolderList({
@@ -223,6 +244,8 @@ function FolderList({
     title: string;
     blurb: string;
     count: number;
+    photos?: number;
+    notes?: number;
     thumb?: string;
     icon: "plant" | "folder" | "equip";
     onOpen: () => void;
@@ -254,13 +277,19 @@ function FolderList({
             <p className="truncate font-medium">{item.title}</p>
             <p className="truncate font-mono text-xs text-muted-foreground">{item.blurb}</p>
           </div>
-          <p className="shrink-0 text-sm tabular-nums text-muted-foreground">
-            {item.count} {item.count === 1 ? "photo" : "photos"}
+          <p className="shrink-0 text-right text-sm tabular-nums text-muted-foreground">
+            {countLabel(item.photos ?? item.count, item.notes ?? 0)}
           </p>
         </button>
       ))}
     </div>
   );
+}
+
+function noteKindLabel(kind: FileNoteKind) {
+  if (kind === "log") return "Log";
+  if (kind === "paste") return "Pasted data";
+  return "Note";
 }
 
 function EquipAlbum({
@@ -269,12 +298,14 @@ function EquipAlbum({
   area,
   equip,
   onUploaded,
+  onNote,
 }: {
   plant: AlbumPlant;
   section: AlbumSection;
   area: AlbumArea;
   equip: AlbumEquipment;
   onUploaded: () => void;
+  onNote: () => void;
 }) {
   const commonId = equip.key.startsWith("common:") ? equip.key.slice("common:".length) : undefined;
   const refs: PhotoRef[] = equip.photos.map((p) => ({
@@ -283,6 +314,65 @@ function EquipAlbum({
     commonId,
     kind: p.kind,
   }));
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [kind, setKind] = useState<FileNoteKind>("note");
+  const [saving, setSaving] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [openBody, setOpenBody] = useState<Record<string, string>>({});
+
+  const place = {
+    plantId: plant.plantId,
+    plantName: plant.name,
+    sectionId: section.sectionId,
+    sectionName: section.name,
+    areaId: area.areaId,
+    areaName: area.label,
+    equipmentId: equip.equipmentId,
+    equipmentTag: commonId ? undefined : equip.tag,
+    equipmentName: commonId ? undefined : equip.name,
+    commonId,
+    commonTag: commonId ? equip.tag : undefined,
+    commonName: commonId ? equip.name : undefined,
+    source: "album" as const,
+  };
+
+  async function saveNote() {
+    if (!body.trim()) {
+      toast.error("Write the note first.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api("/api/files/notes", {
+        method: "POST",
+        body: JSON.stringify({ ...place, title, body, kind }),
+      });
+      setTitle("");
+      setBody("");
+      toast.success("Note filed under this machine.");
+      onNote();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the note.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleNote(note: AlbumNote) {
+    if (openId === note.id) {
+      setOpenId(null);
+      return;
+    }
+    setOpenId(note.id);
+    if (openBody[note.id]) return;
+    try {
+      const data = await api<{ note: { body: string } }>(`/api/files/notes/${note.id}`);
+      setOpenBody((prev) => ({ ...prev, [note.id]: data.note.body }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open that note.");
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -307,48 +397,96 @@ function EquipAlbum({
           gallery
           label="Rear camera"
           hint="Rear camera or insert from gallery. Saved in this machine’s equipment-ID folder, same bin as round photos."
-          place={{
-            plantId: plant.plantId,
-            plantName: plant.name,
-            sectionId: section.sectionId,
-            sectionName: section.name,
-            areaId: area.areaId,
-            areaName: area.label,
-            equipmentId: equip.equipmentId,
-            equipmentTag: commonId ? undefined : equip.tag,
-            equipmentName: commonId ? undefined : equip.name,
-            commonId,
-            commonTag: commonId ? equip.tag : undefined,
-            commonName: commonId ? equip.name : undefined,
-            source: "album",
-          }}
+          place={place}
           source="album"
           onChange={() => {
             toast.success("Photo filed under this machine.");
             onUploaded();
           }}
         />
+        <div className="mt-4 space-y-2 border-t pt-3">
+          <p className="text-sm font-medium">Text for this machine</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="file-note-title">Title</Label>
+              <Input
+                id="file-note-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Nameplate data, last overhaul…"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="file-note-kind">Kind</Label>
+              <select
+                id="file-note-kind"
+                className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm"
+                value={kind}
+                onChange={(e) => setKind(e.target.value as FileNoteKind)}
+              >
+                <option value="note">Note</option>
+                <option value="log">Log</option>
+                <option value="paste">Pasted plant data</option>
+              </select>
+            </div>
+          </div>
+          <Textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Type a note, a log line, or paste nameplate / history text. It stays in this equipment-ID folder with the photos."
+          />
+          <Button type="button" onClick={() => void saveNote()} disabled={saving}>
+            {saving ? "Saving…" : "Save text"}
+          </Button>
+        </div>
       </div>
-      {equip.photos.length === 0 ? (
+      {equip.notes.length > 0 ? (
+        <div className="space-y-2">
+          <h3 className="font-heading text-lg">Text</h3>
+          <ul className="space-y-2">
+            {equip.notes.map((note) => (
+              <li key={note.id} className="rounded-xl border bg-card p-3">
+                <button type="button" className="w-full text-left" onClick={() => void toggleNote(note)}>
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <FileText className="size-4 text-muted-foreground" />
+                    {note.title}
+                    <span className="font-normal text-muted-foreground">· {noteKindLabel(note.kind)}</span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {note.uploadedAt.slice(0, 10)} · {note.uploadedAt.slice(11, 16)}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                    {openId === note.id ? openBody[note.id] ?? "Opening…" : note.preview}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {equip.photos.length === 0 && equip.notes.length === 0 ? (
         <EmptyState
-          title="No photos on this machine yet"
-          message="Take a nameplate, a defect, or a after-repair shot. Next week you will find them all here."
+          title="Nothing on this machine yet"
+          message="Take a nameplate or defect shot, or paste a note. Next week you will find them all here."
         />
-      ) : (
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {equip.photos.map((photo) => (
-            <li key={photo.id} className="overflow-hidden rounded-xl border bg-card">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo.url} alt={photo.filename} className="aspect-square w-full object-cover" />
-              <div className="p-2">
-                <p className="text-xs font-medium">{kindLabel(photo.kind)}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {photo.uploadedAt.slice(0, 10)} · {photo.uploadedAt.slice(11, 16)}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+      ) : equip.photos.length === 0 ? null : (
+        <div className="space-y-2">
+          <h3 className="font-heading text-lg">Photos</h3>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {equip.photos.map((photo) => (
+              <li key={photo.id} className="overflow-hidden rounded-xl border bg-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={photo.filename} className="aspect-square w-full object-cover" />
+                <div className="p-2">
+                  <p className="text-xs font-medium">{kindLabel(photo.kind)}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {photo.uploadedAt.slice(0, 10)} · {photo.uploadedAt.slice(11, 16)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

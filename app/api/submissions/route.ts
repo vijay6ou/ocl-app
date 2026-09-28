@@ -194,6 +194,7 @@ export async function POST(req: Request) {
     } catch {
       notify = {
         discord: "failed" as const,
+        telegram: "failed" as const,
         warning: "Record saved on the plant server. Discord delivery failed.",
       };
     }

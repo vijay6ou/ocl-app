@@ -127,8 +127,13 @@ error. Discord failure never rolls back a saved record.
 5 wrong attempts locks it for 15 minutes. An admin can reset it in **People**.
 
 **An admin wants to publish a catalogue change.**
-**Catalogue** → area (for example Additive) → equipment card → **Add field** → **Publish to plant
+**Catalogue** → area (for example Additive) → equipment card → **Add field** → **Save draft** (keeps the half-filled form) → **Publish to plant
 server**. Technicians pick it up on next load.
+
+**Telegram is not posting.**
+The bot token lives in `/etc/ocl-technician-log.env`. Someone must send a private
+message to `@Office3331bot`. Then **Storage** → **Check for a DM**. Chat id is
+stored on the plant server. Admin UI never shows the token or chat id.
 
 **The APK must be rebuilt.**
 Plant app is **1.15.0** (versionCode 17). Build with `./gradlew :app:publishToPlantServer`

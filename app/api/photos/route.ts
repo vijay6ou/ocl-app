@@ -3,7 +3,7 @@ import { jsonError, requireUser } from "@/lib/auth";
 import { PHOTO_MAX_BYTES } from "@/lib/constants";
 import { canSeeArea } from "@/lib/hierarchy";
 import { buildAlbumTree, fillPlaceFromCatalogue, locateEquipment, type PhotoPlace } from "@/lib/media-path";
-import { getCatalogue, listPhotos, savePhotoFile } from "@/lib/store";
+import { getCatalogue, listFileNotes, listPhotos, savePhotoFile } from "@/lib/store";
 import type { PhotoKind, PhotoMeta, PhotoSource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +28,9 @@ export async function GET(req: Request) {
   try {
     const user = await requireUser();
     const url = new URL(req.url);
-    const [photos, catalogue] = await Promise.all([listPhotos(), getCatalogue()]);
+    const [photos, notes, catalogue] = await Promise.all([listPhotos(), listFileNotes(), getCatalogue()]);
     if (url.searchParams.get("tree") === "1") {
-      return NextResponse.json({ tree: buildAlbumTree(catalogue, photos, user) });
+      return NextResponse.json({ tree: buildAlbumTree(catalogue, photos, user, notes) });
     }
     const areaId = url.searchParams.get("areaId") ?? "";
     const equipmentId = url.searchParams.get("equipmentId") ?? "";

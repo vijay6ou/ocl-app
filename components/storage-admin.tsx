@@ -22,6 +22,15 @@ type Usage = {
   photoCount: number;
 };
 
+type TelegramStatus = {
+  configured: boolean;
+  linked: boolean;
+  botUsername: string;
+  lastError?: string;
+  lastDiscoverAt?: string;
+  lastSentAt?: string;
+};
+
 type Preview = {
   submissionCount: number;
   photoCount: number;
@@ -45,6 +54,8 @@ export function StorageAdmin() {
   const [confirmText, setConfirmText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [telegram, setTelegram] = useState<TelegramStatus | null>(null);
+  const [telegramBusy, setTelegramBusy] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(
@@ -53,11 +64,15 @@ export function StorageAdmin() {
       setError(null);
       try {
         const q = dates ?? { from, to };
-        const data = await api<{ usage: Usage; preview: Preview }>(
-          `/api/admin/storage?from=${encodeURIComponent(q.from)}&to=${encodeURIComponent(q.to)}`
-        );
+        const [data, tg] = await Promise.all([
+          api<{ usage: Usage; preview: Preview }>(
+            `/api/admin/storage?from=${encodeURIComponent(q.from)}&to=${encodeURIComponent(q.to)}`
+          ),
+          api<{ telegram: TelegramStatus }>("/api/admin/telegram").catch(() => null),
+        ]);
         setUsage(data.usage);
         setPreview(data.preview);
+        if (tg?.telegram) setTelegram(tg.telegram);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not read plant storage.");
       } finally {
@@ -118,6 +133,82 @@ export function StorageAdmin() {
           are not included in date-range delete.
         </p>
       </div>
+
+      <Card data-telegram-status>
+        <CardHeader>
+          <CardTitle>Telegram</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {telegram ? (
+            <>
+              <p>
+                Bot <span className="font-medium">@{telegram.botUsername || "Office3331bot"}</span>
+                {telegram.configured ? " is configured on the plant server." : " token is missing on the plant server."}{" "}
+                {telegram.linked
+                  ? "A private chat is linked. Submit and day notes post here."
+                  : "Waiting for a private message to @Office3331bot. Open that chat and send any text, then tap Check for a DM."}
+              </p>
+              {telegram.lastError ? (
+                <p className="text-amber-800">{telegram.lastError}</p>
+              ) : null}
+              {telegram.lastSentAt ? (
+                <p className="text-muted-foreground">Last send {telegram.lastSentAt.slice(0, 16).replace("T", " ")} UTC</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-muted-foreground">Could not read Telegram status.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={telegramBusy}
+              onClick={async () => {
+                setTelegramBusy(true);
+                try {
+                  const data = await api<{ telegram: TelegramStatus }>("/api/admin/telegram", {
+                    method: "POST",
+                    body: JSON.stringify({ test: false }),
+                  });
+                  setTelegram(data.telegram);
+                  toast.success(
+                    data.telegram.linked
+                      ? "Private chat is linked."
+                      : "Still waiting for a DM to @Office3331bot."
+                  );
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Could not check Telegram.");
+                } finally {
+                  setTelegramBusy(false);
+                }
+              }}
+            >
+              {telegramBusy ? "Checking…" : "Check for a DM"}
+            </Button>
+            <Button
+              type="button"
+              disabled={telegramBusy || !telegram?.linked}
+              onClick={async () => {
+                setTelegramBusy(true);
+                try {
+                  const data = await api<{ telegram: TelegramStatus; testSent?: boolean }>(
+                    "/api/admin/telegram",
+                    { method: "POST", body: JSON.stringify({ test: true }) }
+                  );
+                  setTelegram(data.telegram);
+                  toast.success(data.testSent ? "Test message sent." : "Could not send a test yet.");
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Could not send a test.");
+                } finally {
+                  setTelegramBusy(false);
+                }
+              }}
+            >
+              Send test
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-storage-usage>
         <Card>

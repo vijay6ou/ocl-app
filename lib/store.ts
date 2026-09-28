@@ -6,7 +6,8 @@ import { SEED_ACCOUNTS } from "@/lib/constants";
 import { normalizeCatalogue } from "@/lib/plant-structure";
 import { applyBlocksToCatalogue, EQUIPMENT_BLOCKS, type EquipmentBlock, type SuperBlock } from "@/lib/equipment-blocks";
 import { MATERIAL_HANDLING_ID, WEEKDAY_TO_AREA } from "@/lib/hierarchy";
-import { assertSafeRelPath, isAlbumPhoto, mediaRelPath, type PhotoPlace } from "@/lib/media-path";
+import { assertSafeRelPath, isAlbumPhoto, mediaRelPath, noteRelPath, type PhotoPlace } from "@/lib/media-path";
+import type { CatalogueDraft, FileNote } from "@/lib/file-docs";
 import {
   DEFAULT_LOCATION_WINDOW,
   normalizeLocationWindow,
@@ -49,6 +50,9 @@ const LOCATION_WINDOW_FILE = path.join(DATA_DIR, "location-window.json");
 const PRESENCE_FILE = path.join(DATA_DIR, "presence.json");
 const BLOCKS_FILE = path.join(DATA_DIR, "blocks.json");
 const SUPER_BLOCKS_FILE = path.join(DATA_DIR, "super-blocks.json");
+const FILE_NOTES_FILE = path.join(DATA_DIR, "file-notes.json");
+const CATALOGUE_DRAFTS_FILE = path.join(DATA_DIR, "catalogue-drafts.json");
+const TELEGRAM_FILE = path.join(DATA_DIR, "telegram.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -188,6 +192,24 @@ async function seedIfNeeded() {
 
   const superExist = await fs.access(SUPER_BLOCKS_FILE).then(() => true).catch(() => false);
   if (!superExist) await writeJson(SUPER_BLOCKS_FILE, []);
+
+  const notesExist = await fs.access(FILE_NOTES_FILE).then(() => true).catch(() => false);
+  if (!notesExist) await writeJson(FILE_NOTES_FILE, []);
+
+  const catalogueDraftsExist = await fs.access(CATALOGUE_DRAFTS_FILE).then(() => true).catch(() => false);
+  if (!catalogueDraftsExist) await writeJson(CATALOGUE_DRAFTS_FILE, {});
+
+  const telegramExist = await fs.access(TELEGRAM_FILE).then(() => true).catch(() => false);
+  if (!telegramExist) {
+    await writeJson(TELEGRAM_FILE, {
+      chatId: "",
+      botUsername: "Office3331bot",
+      savedAt: "",
+      lastError: "",
+      lastDiscoverAt: "",
+      lastUpdatesCount: 0,
+    });
+  }
 
   await migrateUserPins();
   await migrateUserGrants();
@@ -739,6 +761,95 @@ export async function listPhotos(): Promise<PhotoMeta[]> {
   return withLock(async () => {
     const store = await loadAll();
     return store.photos;
+  });
+}
+
+export async function listFileNotes(): Promise<FileNote[]> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    return readJson<FileNote[]>(FILE_NOTES_FILE, []);
+  });
+}
+
+export async function saveFileNote(
+  note: Omit<FileNote, "relPath" | "size" | "filename" | "mime"> & Partial<Pick<FileNote, "filename" | "mime">>,
+  place: PhotoPlace
+): Promise<FileNote> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const rows = await readJson<FileNote[]>(FILE_NOTES_FILE, []);
+    const body = note.body.replace(/\r\n/g, "\n");
+    const relPath = noteRelPath(place, { id: note.id, kind: note.kind, title: note.title });
+    const dest = path.join(MEDIA_DIR, assertSafeRelPath(relPath));
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.writeFile(dest, body, "utf8");
+    const saved: FileNote = {
+      ...note,
+      body,
+      filename: note.filename || `${note.kind}-${note.id.slice(0, 8)}.txt`,
+      mime: "text/plain; charset=utf-8",
+      size: Buffer.byteLength(body, "utf8"),
+      plantId: place.plantId ?? note.plantId,
+      plantName: place.plantName ?? note.plantName,
+      sectionId: place.sectionId ?? note.sectionId,
+      sectionName: place.sectionName ?? note.sectionName,
+      areaId: place.areaId ?? note.areaId,
+      areaName: place.areaName ?? note.areaName,
+      equipmentId: place.equipmentId ?? note.equipmentId,
+      equipmentTag: place.equipmentTag ?? note.equipmentTag,
+      equipmentName: place.equipmentName ?? note.equipmentName,
+      commonId: place.commonId ?? note.commonId,
+      commonTag: place.commonTag ?? note.commonTag,
+      commonName: place.commonName ?? note.commonName,
+      relPath,
+      source: place.source ?? note.source,
+    };
+    rows.push(saved);
+    await writeJson(FILE_NOTES_FILE, rows);
+    return saved;
+  });
+}
+
+export async function getFileNote(id: string): Promise<FileNote | null> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const rows = await readJson<FileNote[]>(FILE_NOTES_FILE, []);
+    const meta = rows.find((n) => n.id === id);
+    if (!meta) return null;
+    try {
+      const body = await fs.readFile(path.join(MEDIA_DIR, assertSafeRelPath(meta.relPath)), "utf8");
+      return { ...meta, body };
+    } catch {
+      return meta;
+    }
+  });
+}
+
+export async function getCatalogueDraft(areaId: string): Promise<CatalogueDraft | null> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<Record<string, CatalogueDraft>>(CATALOGUE_DRAFTS_FILE, {});
+    return all[areaId] ?? null;
+  });
+}
+
+export async function saveCatalogueDraft(draft: CatalogueDraft): Promise<CatalogueDraft> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<Record<string, CatalogueDraft>>(CATALOGUE_DRAFTS_FILE, {});
+    const next = { ...draft, savedAt: new Date().toISOString() };
+    all[draft.areaId] = next;
+    await writeJson(CATALOGUE_DRAFTS_FILE, all);
+    return next;
+  });
+}
+
+export async function deleteCatalogueDraft(areaId: string) {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const all = await readJson<Record<string, CatalogueDraft>>(CATALOGUE_DRAFTS_FILE, {});
+    delete all[areaId];
+    await writeJson(CATALOGUE_DRAFTS_FILE, all);
   });
 }
 
