@@ -12,7 +12,13 @@ import path from "path";
 import { buildSubmissionPdf, type PdfPhoto } from "@/lib/report-pdf";
 import { workingSectionLabel } from "@/lib/working-section";
 import {
+  destOn,
+  shouldNotifySubmission,
+  type NotifySettings,
+} from "@/lib/notify-settings";
+import {
   discordThreadName,
+  formatDayNotes,
   formatFaultsOnly,
   formatFullRound,
   roundHeader,
@@ -21,7 +27,6 @@ import { sanitizePublicText } from "@/lib/public-text";
 import { bakeUprightImage } from "@/lib/image-orient";
 import type { PhotoRef, Submission } from "@/lib/types";
 import { sendTelegramText, type TelegramChannelStatus } from "@/lib/telegram";
-import { shouldSendRoundSubmit, type NotifySettings } from "@/lib/notify-settings";
 
 export type NotifyChannelStatus = "ok" | "skipped" | "failed";
 
@@ -106,13 +111,17 @@ type DiscordPost = {
   files?: NotifyFile[];
 };
 
+function locationWebhook() {
+  return (process.env.LOCATION_DISCORD_WEBHOOK_URL ?? "").trim();
+}
+
 function buildDiscordPosts(
   record: Submission,
   pdf: Buffer | null,
   photos: PdfPhoto[],
-  settings: NotifySettings
+  settings: NotifySettings,
+  includeDayNotes: boolean
 ): { kind: string; post: DiscordPost }[] {
-  const includeDayNotes = settings.events.dayNotes;
   const full = formatFullRound(record, { includeDayNotes });
   const header = roundHeader(record);
   const items: { kind: string; post: DiscordPost }[] = [];
@@ -263,13 +272,18 @@ async function sendDiscord(
   record: Submission,
   pdf: Buffer | null,
   photos: PdfPhoto[],
-  settings: NotifySettings
+  settings: NotifySettings,
+  failCount: number
 ): Promise<{ status: NotifyChannelStatus; parts?: { kind: string; content: string; files: string[]; messageId?: string }[] }> {
-  if (!settings.destinations.discordReports) return { status: "skipped" };
+  const sendRound = destOn(settings, "roundSubmit", "discordReports", failCount);
+  const sendNotes = destOn(settings, "dayNotes", "discordReports", failCount);
+  if (!sendRound && !sendNotes) return { status: "skipped" };
   const hook = discordWebhook();
   if (!hook) return { status: "skipped" };
   const date = record.meta.date;
-  const items = buildDiscordPosts(record, pdf, photos, settings);
+  const items = sendRound
+    ? buildDiscordPosts(record, pdf, photos, settings, sendNotes)
+    : [{ kind: "day-notes", post: { content: formatDayNotes(record).slice(0, DISCORD_TEXT_LIMIT) } }];
   if (items.length === 0) return { status: "skipped" };
   const name = discordThreadName(record);
   const existing = await getDiscordThread(date);
@@ -300,15 +314,18 @@ function warningFor(result: NotifyResult) {
   return undefined;
 }
 
-async function sendTelegram(record: Submission, settings: NotifySettings): Promise<TelegramChannelStatus> {
-  if (!settings.destinations.telegram) return "skipped";
+async function sendTelegram(
+  record: Submission,
+  settings: NotifySettings,
+  failCount: number
+): Promise<TelegramChannelStatus> {
+  const sendRound = destOn(settings, "roundSubmit", "telegram", failCount);
+  const sendNotes = destOn(settings, "dayNotes", "telegram", failCount);
+  if (!sendRound && !sendNotes) return "skipped";
   try {
-    const includeDayNotes = settings.events.dayNotes;
-    const full = formatFullRound(record, { includeDayNotes });
-    const notes = includeDayNotes ? record.dayNotes?.trim() || "(none)" : "";
-    const header = includeDayNotes
-      ? `${roundHeader(record)}\n\nDay notes\n${notes}`
-      : roundHeader(record);
+    if (!sendRound) return await sendTelegramText(formatDayNotes(record).slice(0, 3900));
+    const full = formatFullRound(record, { includeDayNotes: sendNotes });
+    const header = sendNotes ? formatDayNotes(record) : roundHeader(record);
     if (settings.payload.fullForm) {
       if (full.length <= 3900) return await sendTelegramText(full);
       return await sendTelegramText(header.slice(0, 3900), {
@@ -316,44 +333,97 @@ async function sendTelegram(record: Submission, settings: NotifySettings): Promi
         bytes: Buffer.from(full, "utf8"),
       });
     }
-    if (includeDayNotes) return await sendTelegramText(header.slice(0, 3900));
+    if (sendNotes) return await sendTelegramText(header.slice(0, 3900));
     return await sendTelegramText(`${roundHeader(record)}\n\nRound saved on the plant server.`.slice(0, 3900));
   } catch {
     return "failed";
   }
 }
 
+async function sendSubmitToLocationChannel(
+  record: Submission,
+  settings: NotifySettings,
+  failCount: number
+): Promise<NotifyChannelStatus> {
+  const sendRound = destOn(settings, "roundSubmit", "discordLocation", failCount);
+  const sendNotes = destOn(settings, "dayNotes", "discordLocation", failCount);
+  if (!sendRound && !sendNotes) return "skipped";
+  const hook = locationWebhook();
+  if (!hook) return "skipped";
+  const content = (
+    sendRound
+      ? `${roundHeader(record)}\n\nRound saved on the plant server.${
+          sendNotes ? `\n\nDay notes\n${record.dayNotes?.trim() || "(none)"}` : ""
+        }`
+      : formatDayNotes(record)
+  ).slice(0, DISCORD_TEXT_LIMIT);
+  const date = record.meta.date;
+  const existing = await getLocationDiscordThread(date);
+  const form = new FormData();
+  const payload: Record<string, unknown> = {
+    username: "Adani Cements location",
+    content,
+  };
+  if (!existing?.threadId) payload.thread_name = `Location · ${date}`;
+  form.append("payload_json", JSON.stringify(payload));
+  const url = new URL(hook);
+  url.searchParams.set("wait", "true");
+  if (existing?.threadId) url.searchParams.set("thread_id", existing.threadId);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    body: form,
+    headers: { "User-Agent": APP_UA },
+  });
+  if (!res.ok) return "failed";
+  try {
+    const msg = JSON.parse(await res.text()) as { channel_id?: string };
+    if (msg.channel_id) await saveLocationDiscordThread(date, String(msg.channel_id));
+  } catch {
+    /* thread id optional */
+  }
+  return "ok";
+}
+
 export async function notifySubmission(record: Submission): Promise<NotifyResult> {
   const settings = await getNotifySettings();
   const result: NotifyResult = { discord: "skipped", telegram: "skipped" };
   let discordParts: { kind: string; content: string; files: string[]; messageId?: string }[] | undefined;
-  const send = shouldSendRoundSubmit(settings, record.fails.length);
-  if (!send) {
+  const failCount = record.fails.length;
+  if (!shouldNotifySubmission(settings, failCount)) {
     result.warning = warningFor(result);
     return result;
   }
+  const wantReports =
+    destOn(settings, "roundSubmit", "discordReports", failCount) ||
+    destOn(settings, "dayNotes", "discordReports", failCount);
+  const wantTelegram =
+    destOn(settings, "roundSubmit", "telegram", failCount) ||
+    destOn(settings, "dayNotes", "telegram", failCount);
   try {
     const wantPhotos = settings.payload.photos || settings.payload.pdf;
-    const photos = wantPhotos && settings.destinations.discordReports ? await loadPhotos(record) : [];
-    const pdf =
-      settings.payload.pdf && settings.destinations.discordReports
-        ? await buildSubmissionPdf(record, photos)
-        : null;
+    const sendRoundReports = destOn(settings, "roundSubmit", "discordReports", failCount);
+    const photos = wantPhotos && sendRoundReports ? await loadPhotos(record) : [];
+    const pdf = settings.payload.pdf && sendRoundReports ? await buildSubmissionPdf(record, photos) : null;
     try {
-      const disc = await sendDiscord(record, pdf, photos, settings);
+      const disc = await sendDiscord(record, pdf, photos, settings, failCount);
       result.discord = disc.status;
       discordParts = disc.parts;
     } catch {
-      result.discord = settings.destinations.discordReports && discordWebhook() ? "failed" : "skipped";
+      result.discord = wantReports && discordWebhook() ? "failed" : "skipped";
     }
     try {
-      result.telegram = await sendTelegram(record, settings);
+      await sendSubmitToLocationChannel(record, settings, failCount);
     } catch {
-      result.telegram = settings.destinations.telegram ? "failed" : "skipped";
+      /* location-channel submit is extra; reports/Telegram status stay authoritative */
+    }
+    try {
+      result.telegram = await sendTelegram(record, settings, failCount);
+    } catch {
+      result.telegram = wantTelegram ? "failed" : "skipped";
     }
   } catch {
-    result.discord = settings.destinations.discordReports && discordWebhook() ? "failed" : "skipped";
-    result.telegram = settings.destinations.telegram ? "failed" : "skipped";
+    result.discord = wantReports && discordWebhook() ? "failed" : "skipped";
+    result.telegram = wantTelegram ? "failed" : "skipped";
   }
   result.warning = warningFor(result);
   try {
@@ -384,7 +454,7 @@ export async function sendAdminNotifyTest(
 ): Promise<{ status: NotifyChannelStatus; detail: string }> {
   if (dest === "telegram") {
     const result = await sendTelegramText(
-      "Plant log test: Notifications control. Submit and day notes use this chat when Telegram is on."
+      "Plant log test: Notifications control. Real events follow the routing matrix on this page."
     );
     const detail =
       result === "ok"

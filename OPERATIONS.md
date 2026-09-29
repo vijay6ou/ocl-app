@@ -136,10 +136,12 @@ message to `@Office3331bot`. Then **Notifications** → **Check for a DM**. Chat
 stored on the plant server. Admin UI never shows the token or chat id.
 
 **An admin wants to change what Discord or Telegram send.**
-**Notifications** (Control). Master switches per destination, ticks for full form /
-faults / photos / PDF / satellite / coords / name / time, and when (immediate
-submit, 15-minute location, only if faults). Save, then the next event uses it.
-Catalogue and draft saves never notify. Location stays on the location channel.
+**Notifications** (Control). Each event has its own destinations (Discord reports,
+Discord location, Telegram). Ticks for full form / faults / photos / PDF /
+satellite / coords / name / time, and when (immediate submit, 15-minute
+location, only if faults per event). Save, then the next event uses the matrix.
+Catalogue and draft saves never notify. Defaults: submit → Discord reports +
+Telegram; day notes → Telegram only; location → Discord location only.
 
 **The APK must be rebuilt.**
 Plant app is **1.15.0** (versionCode 17). Build with `./gradlew :app:publishToPlantServer`

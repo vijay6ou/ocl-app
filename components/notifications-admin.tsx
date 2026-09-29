@@ -7,7 +7,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/states";
 import { api } from "@/lib/api";
-import { DEFAULT_NOTIFY_SETTINGS, type NotifySettings } from "@/lib/notify-settings";
+import {
+  DEFAULT_NOTIFY_SETTINGS,
+  NOTIFY_DEST_KEYS,
+  NOTIFY_DEST_LABELS,
+  NOTIFY_EVENT_KEYS,
+  NOTIFY_EVENT_META,
+  type NotifyDestKey,
+  type NotifyEventKey,
+  type NotifySettings,
+} from "@/lib/notify-settings";
 
 type TelegramStatus = {
   configured: boolean;
@@ -58,6 +67,27 @@ function Tick({
   );
 }
 
+function DestCheck({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label className="flex cursor-pointer flex-col items-center gap-1.5 py-1">
+      <Checkbox
+        checked={checked}
+        onCheckedChange={(value) => onChange(value === true)}
+        aria-label={label}
+      />
+      <span className="text-[11px] font-medium text-muted-foreground sm:hidden">{label}</span>
+    </label>
+  );
+}
+
 export function NotificationsAdmin() {
   const [settings, setSettings] = useState<NotifySettings>(DEFAULT_NOTIFY_SETTINGS);
   const [saved, setSaved] = useState<NotifySettings>(DEFAULT_NOTIFY_SETTINGS);
@@ -101,7 +131,7 @@ export function NotificationsAdmin() {
       setSettings(data.settings);
       setSaved(data.settings);
       setChannels(data.channels);
-      toast.success("Notification controls saved. The next submit or location ping uses them.");
+      toast.success("Routing saved. The next submit or location ping uses this matrix.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save notification controls.");
     } finally {
@@ -148,11 +178,35 @@ export function NotificationsAdmin() {
     }
   }
 
-  function patch<K extends keyof NotifySettings>(group: K, key: keyof NotifySettings[K], value: boolean) {
+  function patchDest(event: NotifyEventKey, dest: NotifyDestKey, value: boolean) {
     setSettings((prev) => ({
       ...prev,
-      [group]: { ...prev[group], [key]: value },
+      events: {
+        ...prev.events,
+        [event]: {
+          ...prev.events[event],
+          destinations: { ...prev.events[event].destinations, [dest]: value },
+        },
+      },
     }));
+  }
+
+  function patchOnlyIfFaults(event: NotifyEventKey, value: boolean) {
+    setSettings((prev) => ({
+      ...prev,
+      events: {
+        ...prev.events,
+        [event]: { ...prev.events[event], onlyIfFaults: value },
+      },
+    }));
+  }
+
+  function patchPayload(key: keyof NotifySettings["payload"], value: boolean) {
+    setSettings((prev) => ({ ...prev, payload: { ...prev.payload, [key]: value } }));
+  }
+
+  function patchWhen(key: keyof NotifySettings["when"], value: boolean) {
+    setSettings((prev) => ({ ...prev, when: { ...prev.when, [key]: value } }));
   }
 
   if (loading) return <LoadingState label="Opening notification controls…" />;
@@ -169,51 +223,73 @@ export function NotificationsAdmin() {
           </p>
           <h1 className="font-heading text-2xl font-semibold">Notifications</h1>
           <p className="text-sm text-muted-foreground">
-            What Discord and Telegram send, and when. Catalogue and draft saves never notify.
-            Location stays on the location channel — not Telegram. Tokens and channel addresses
-            stay on the plant server.
+            Each event chooses Discord reports, Discord location, Telegram, or any mix.
+            Catalogue and draft saves never notify. Tokens and channel addresses stay on the
+            plant server.
           </p>
         </div>
         <Button onClick={() => void save()} disabled={saving || !dirty}>
-          {saving ? "Saving…" : dirty ? "Save controls" : "Saved"}
+          {saving ? "Saving…" : dirty ? "Save routing" : "Saved"}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Destinations</CardTitle>
+          <CardTitle>Routing</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-3">
-          <Tick
-            checked={settings.destinations.discordReports}
-            onChange={(v) => patch("destinations", "discordReports", v)}
-            label="Discord reports"
-            hint={
-              channels?.discordReports.configured
-                ? "Round submit channel is configured."
-                : "Channel is not configured on the plant server."
-            }
-          />
-          <Tick
-            checked={settings.destinations.discordLocation}
-            onChange={(v) => patch("destinations", "discordLocation", v)}
-            label="Discord location"
-            hint={
-              channels?.discordLocation.configured
-                ? "15-minute check-in channel is configured."
-                : "Channel is not configured on the plant server."
-            }
-          />
-          <Tick
-            checked={settings.destinations.telegram}
-            onChange={(v) => patch("destinations", "telegram", v)}
-            label="Telegram"
-            hint={
-              telegram?.linked
-                ? "Private chat is bound. Submit and day notes can post here."
-                : "Waiting for a private message to @Office3331bot."
-            }
-          />
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Discord reports {channels?.discordReports.configured ? "is configured" : "is not configured"}.
+            Discord location {channels?.discordLocation.configured ? "is configured" : "is not configured"}.
+            Telegram {telegram?.linked ? "is bound" : "is waiting for a DM"}.
+          </p>
+
+          <div className="overflow-x-auto rounded-xl border" data-notify-matrix>
+            <table className="w-full min-w-[36rem] text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40 text-left">
+                  <th className="px-3 py-2.5 font-medium">Event</th>
+                  {NOTIFY_DEST_KEYS.map((dest) => (
+                    <th key={dest} className="px-2 py-2.5 text-center font-medium">
+                      {NOTIFY_DEST_LABELS[dest]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {NOTIFY_EVENT_KEYS.map((event) => {
+                  const meta = NOTIFY_EVENT_META[event];
+                  const row = settings.events[event];
+                  return (
+                    <tr key={event} className="border-b last:border-0 align-top">
+                      <td className="px-3 py-3">
+                        <p className="font-medium">{meta.label}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{meta.hint}</p>
+                        {event !== "locationCheckIn" ? (
+                          <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs">
+                            <Checkbox
+                              checked={row.onlyIfFaults}
+                              onCheckedChange={(value) => patchOnlyIfFaults(event, value === true)}
+                            />
+                            Only if faults
+                          </label>
+                        ) : null}
+                      </td>
+                      {NOTIFY_DEST_KEYS.map((dest) => (
+                        <td key={dest} className="px-2 py-3">
+                          <DestCheck
+                            checked={row.destinations[dest]}
+                            onChange={(v) => patchDest(event, dest, v)}
+                            label={`${meta.label} → ${NOTIFY_DEST_LABELS[dest]}`}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
@@ -223,89 +299,73 @@ export function NotificationsAdmin() {
         </CardHeader>
         <CardContent className="grid gap-2">
           <Tick
-            checked={settings.events.roundSubmit}
-            onChange={(v) => patch("events", "roundSubmit", v)}
-            label="Round submit"
-            hint="After a round is saved on the plant server."
-          />
-          <Tick
-            checked={settings.events.dayNotes}
-            onChange={(v) => patch("events", "dayNotes", v)}
-            label="Day notes"
-            hint="Include the Summary day notes in the submit message."
-          />
-          <Tick
-            checked={settings.events.locationCheckIn}
-            onChange={(v) => patch("events", "locationCheckIn", v)}
-            label="Location check-in"
-            hint="Technician 15-minute slot, only on the location channel."
-          />
-          <Tick
             checked={settings.when.submitImmediate}
-            onChange={(v) => patch("when", "submitImmediate", v)}
+            onChange={(v) => patchWhen("submitImmediate", v)}
             label="Send immediately on submit"
-            hint="If off, a saved round is not posted until you turn this back on."
+            hint="Round submit and day notes wait for a successful cloud save."
           />
           <Tick
             checked={settings.when.locationOnSlot}
-            onChange={(v) => patch("when", "locationOnSlot", v)}
+            onChange={(v) => patchWhen("locationOnSlot", v)}
             label="Location on the 15-minute slot"
             hint="Duty window still applies. Duplicate slots are not posted twice."
-          />
-          <Tick
-            checked={settings.when.onlyIfFaults}
-            onChange={(v) => patch("when", "onlyIfFaults", v)}
-            label="Only if faults"
-            hint="Skip Discord reports and Telegram when the round has no FAIL items."
           />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>What to send</CardTitle>
+          <CardTitle>Round submit payload</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2">
           <Tick
             checked={settings.payload.fullForm}
-            onChange={(v) => patch("payload", "fullForm", v)}
+            onChange={(v) => patchPayload("fullForm", v)}
             label="Full form"
             hint="Same layout as the in-app record."
           />
           <Tick
             checked={settings.payload.faultsOnly}
-            onChange={(v) => patch("payload", "faultsOnly", v)}
+            onChange={(v) => patchPayload("faultsOnly", v)}
             label="Faults only"
           />
           <Tick
             checked={settings.payload.photos}
-            onChange={(v) => patch("payload", "photos", v)}
+            onChange={(v) => patchPayload("photos", v)}
             label="Photos"
           />
           <Tick
             checked={settings.payload.pdf}
-            onChange={(v) => patch("payload", "pdf", v)}
+            onChange={(v) => patchPayload("pdf", v)}
             label="PDF"
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Location payload</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2">
           <Tick
             checked={settings.payload.satelliteImage}
-            onChange={(v) => patch("payload", "satelliteImage", v)}
+            onChange={(v) => patchPayload("satelliteImage", v)}
             label="Satellite image"
             hint="Esri World Imagery snapshot on location check-in."
           />
           <Tick
             checked={settings.payload.coords}
-            onChange={(v) => patch("payload", "coords", v)}
+            onChange={(v) => patchPayload("coords", v)}
             label="Coordinates"
           />
           <Tick
             checked={settings.payload.name}
-            onChange={(v) => patch("payload", "name", v)}
+            onChange={(v) => patchPayload("name", v)}
             label="Name"
           />
           <Tick
             checked={settings.payload.time}
-            onChange={(v) => patch("payload", "time", v)}
+            onChange={(v) => patchPayload("time", v)}
             label="Time"
           />
         </CardContent>
@@ -356,7 +416,8 @@ export function NotificationsAdmin() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-muted-foreground">
-            Posts a short control-page test. No token, webhook, or server address is included.
+            Posts a short control-page test to that destination. Real events still follow the matrix.
+            No token, webhook, or server address is included.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" disabled={busy !== null} onClick={() => void test("discord")}>
@@ -378,7 +439,7 @@ export function NotificationsAdmin() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 p-3 shadow-[0_-8px_24px_rgba(13,33,55,0.08)] backdrop-blur md:hidden">
         <Button className="w-full" onClick={() => void save()} disabled={saving || !dirty}>
-          {saving ? "Saving…" : dirty ? "Save controls" : "Saved"}
+          {saving ? "Saving…" : dirty ? "Save routing" : "Saved"}
         </Button>
       </div>
     </div>

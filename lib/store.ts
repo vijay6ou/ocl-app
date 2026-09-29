@@ -8,7 +8,12 @@ import { applyBlocksToCatalogue, EQUIPMENT_BLOCKS, type EquipmentBlock, type Sup
 import { MATERIAL_HANDLING_ID, WEEKDAY_TO_AREA } from "@/lib/hierarchy";
 import { assertSafeRelPath, isAlbumPhoto, mediaRelPath, noteRelPath, type PhotoPlace } from "@/lib/media-path";
 import type { CatalogueDraft, FileNote } from "@/lib/file-docs";
-import { DEFAULT_NOTIFY_SETTINGS, normalizeNotifySettings, type NotifySettings } from "@/lib/notify-settings";
+import {
+  DEFAULT_NOTIFY_SETTINGS,
+  isLegacyNotifySettings,
+  normalizeNotifySettings,
+  type NotifySettings,
+} from "@/lib/notify-settings";
 import {
   DEFAULT_LOCATION_WINDOW,
   normalizeLocationWindow,
@@ -862,7 +867,9 @@ export async function getNotifySettings(): Promise<NotifySettings> {
   return withLock(async () => {
     await seedIfNeeded();
     const raw = await readJson<unknown>(NOTIFY_SETTINGS_FILE, DEFAULT_NOTIFY_SETTINGS);
-    return normalizeNotifySettings(raw);
+    const settings = normalizeNotifySettings(raw);
+    if (isLegacyNotifySettings(raw)) await writeJson(NOTIFY_SETTINGS_FILE, settings);
+    return settings;
   });
 }
 

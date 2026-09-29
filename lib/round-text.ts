@@ -32,6 +32,12 @@ export function roundHeader(record: Submission) {
   ].join("\n");
 }
 
+export function formatDayNotes(record: Submission): string {
+  const notes = record.dayNotes?.trim() || "(none)";
+  const extra = record.dayPhotos?.length ? `\n${record.dayPhotos.length} photo(s) attached` : "";
+  return `${roundHeader(record)}\n\nDay notes\n${notes}${extra}`;
+}
+
 /** Full round in the same order as the in-app record / print view. */
 export function formatFullRound(
   record: Submission,

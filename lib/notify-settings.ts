@@ -1,13 +1,26 @@
+export const NOTIFY_DEST_KEYS = ["discordReports", "discordLocation", "telegram"] as const;
+export type NotifyDestKey = (typeof NOTIFY_DEST_KEYS)[number];
+
+export const NOTIFY_EVENT_KEYS = ["roundSubmit", "dayNotes", "locationCheckIn"] as const;
+export type NotifyEventKey = (typeof NOTIFY_EVENT_KEYS)[number];
+
+export type NotifyDestinations = {
+  discordReports: boolean;
+  discordLocation: boolean;
+  telegram: boolean;
+};
+
+export type NotifyEventRoute = {
+  destinations: NotifyDestinations;
+  onlyIfFaults: boolean;
+};
+
 export type NotifySettings = {
-  destinations: {
-    discordReports: boolean;
-    discordLocation: boolean;
-    telegram: boolean;
-  };
+  version: 2;
   events: {
-    roundSubmit: boolean;
-    dayNotes: boolean;
-    locationCheckIn: boolean;
+    roundSubmit: NotifyEventRoute;
+    dayNotes: NotifyEventRoute;
+    locationCheckIn: NotifyEventRoute;
   };
   payload: {
     fullForm: boolean;
@@ -22,20 +35,48 @@ export type NotifySettings = {
   when: {
     submitImmediate: boolean;
     locationOnSlot: boolean;
-    onlyIfFaults: boolean;
   };
 };
 
-export const DEFAULT_NOTIFY_SETTINGS: NotifySettings = {
-  destinations: {
-    discordReports: true,
-    discordLocation: true,
-    telegram: true,
+export const NOTIFY_DEST_LABELS: Record<NotifyDestKey, string> = {
+  discordReports: "Discord reports",
+  discordLocation: "Discord location",
+  telegram: "Telegram",
+};
+
+export const NOTIFY_EVENT_META: Record<
+  NotifyEventKey,
+  { label: string; hint: string }
+> = {
+  roundSubmit: {
+    label: "Round submit",
+    hint: "Full form, faults, photos, and PDF after a successful cloud save.",
   },
+  dayNotes: {
+    label: "Day notes",
+    hint: "Summary day notes from that submit. Independent of the full form.",
+  },
+  locationCheckIn: {
+    label: "Location check-in",
+    hint: "15-minute slot while on duty. Defaults to the location channel.",
+  },
+};
+
+export const DEFAULT_NOTIFY_SETTINGS: NotifySettings = {
+  version: 2,
   events: {
-    roundSubmit: true,
-    dayNotes: true,
-    locationCheckIn: true,
+    roundSubmit: {
+      destinations: { discordReports: true, discordLocation: false, telegram: true },
+      onlyIfFaults: false,
+    },
+    dayNotes: {
+      destinations: { discordReports: false, discordLocation: false, telegram: true },
+      onlyIfFaults: false,
+    },
+    locationCheckIn: {
+      destinations: { discordReports: false, discordLocation: true, telegram: false },
+      onlyIfFaults: false,
+    },
   },
   payload: {
     fullForm: true,
@@ -50,7 +91,6 @@ export const DEFAULT_NOTIFY_SETTINGS: NotifySettings = {
   when: {
     submitImmediate: true,
     locationOnSlot: true,
-    onlyIfFaults: false,
   },
 };
 
@@ -61,53 +101,165 @@ function flag(value: unknown, fallback: boolean): boolean {
   return fallback;
 }
 
-export function normalizeNotifySettings(raw: unknown): NotifySettings {
+function destFlags(raw: unknown, fallback: NotifyDestinations): NotifyDestinations {
   const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    discordReports: flag(src.discordReports, fallback.discordReports),
+    discordLocation: flag(src.discordLocation, fallback.discordLocation),
+    telegram: flag(src.telegram, fallback.telegram),
+  };
+}
+
+function eventRoute(raw: unknown, fallback: NotifyEventRoute): NotifyEventRoute {
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    destinations: destFlags(src.destinations, fallback.destinations),
+    onlyIfFaults: flag(src.onlyIfFaults, fallback.onlyIfFaults),
+  };
+}
+
+function isV2(raw: Record<string, unknown>): boolean {
+  if (raw.version === 2) return true;
+  const events = raw.events;
+  if (!events || typeof events !== "object") return false;
+  const submit = (events as Record<string, unknown>).roundSubmit;
+  return Boolean(submit && typeof submit === "object" && !Array.isArray(submit));
+}
+
+function migrateV1(src: Record<string, unknown>): NotifySettings {
   const dest = (src.destinations ?? {}) as Record<string, unknown>;
   const events = (src.events ?? {}) as Record<string, unknown>;
-  const payload = (src.payload ?? {}) as Record<string, unknown>;
   const when = (src.when ?? {}) as Record<string, unknown>;
   const d = DEFAULT_NOTIFY_SETTINGS;
+  const discordReports = flag(dest.discordReports, true);
+  const discordLocation = flag(dest.discordLocation, true);
+  const telegram = flag(dest.telegram, true);
+  const roundSubmit = flag(events.roundSubmit, true);
+  const dayNotes = flag(events.dayNotes, true);
+  const locationCheckIn = flag(events.locationCheckIn, true);
+  const onlyIfFaults = flag(when.onlyIfFaults, false);
   return {
-    destinations: {
-      discordReports: flag(dest.discordReports, d.destinations.discordReports),
-      discordLocation: flag(dest.discordLocation, d.destinations.discordLocation),
-      telegram: flag(dest.telegram, d.destinations.telegram),
-    },
+    version: 2,
     events: {
-      roundSubmit: flag(events.roundSubmit, d.events.roundSubmit),
-      dayNotes: flag(events.dayNotes, d.events.dayNotes),
-      locationCheckIn: flag(events.locationCheckIn, d.events.locationCheckIn),
+      roundSubmit: {
+        destinations: {
+          discordReports: discordReports && roundSubmit,
+          discordLocation: false,
+          telegram: telegram && roundSubmit,
+        },
+        onlyIfFaults,
+      },
+      dayNotes: {
+        destinations: {
+          discordReports: false,
+          discordLocation: false,
+          telegram: telegram && dayNotes,
+        },
+        onlyIfFaults: false,
+      },
+      locationCheckIn: {
+        destinations: {
+          discordReports: false,
+          discordLocation: discordLocation && locationCheckIn,
+          telegram: false,
+        },
+        onlyIfFaults: false,
+      },
     },
-    payload: {
-      fullForm: flag(payload.fullForm, d.payload.fullForm),
-      faultsOnly: flag(payload.faultsOnly, d.payload.faultsOnly),
-      photos: flag(payload.photos, d.payload.photos),
-      pdf: flag(payload.pdf, d.payload.pdf),
-      satelliteImage: flag(payload.satelliteImage, d.payload.satelliteImage),
-      coords: flag(payload.coords, d.payload.coords),
-      name: flag(payload.name, d.payload.name),
-      time: flag(payload.time, d.payload.time),
-    },
+    payload: d.payload,
     when: {
       submitImmediate: flag(when.submitImmediate, d.when.submitImmediate),
       locationOnSlot: flag(when.locationOnSlot, d.when.locationOnSlot),
-      onlyIfFaults: flag(when.onlyIfFaults, d.when.onlyIfFaults),
     },
   };
 }
 
-export function shouldSendRoundSubmit(settings: NotifySettings, failCount: number) {
-  if (!settings.events.roundSubmit) return false;
-  if (!settings.when.submitImmediate) return false;
-  if (settings.when.onlyIfFaults && failCount === 0) return false;
-  return true;
+export function isLegacyNotifySettings(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  return !isV2(raw as Record<string, unknown>);
 }
 
-export function shouldSendLocation(settings: NotifySettings) {
-  return (
-    settings.destinations.discordLocation &&
-    settings.events.locationCheckIn &&
-    settings.when.locationOnSlot
-  );
+export function anyDestOn(dest: NotifyDestinations): boolean {
+  return dest.discordReports || dest.discordLocation || dest.telegram;
+}
+
+export function destOn(
+  settings: NotifySettings,
+  event: NotifyEventKey,
+  dest: NotifyDestKey,
+  failCount = 1
+): boolean {
+  const row = settings.events[event];
+  if (!row.destinations[dest]) return false;
+  if (row.onlyIfFaults && failCount === 0) return false;
+  if (event === "locationCheckIn") return settings.when.locationOnSlot;
+  return settings.when.submitImmediate;
+}
+
+export function eventFires(settings: NotifySettings, event: NotifyEventKey, failCount = 1): boolean {
+  return NOTIFY_DEST_KEYS.some((dest) => destOn(settings, event, dest, failCount));
+}
+
+export function includeDayNotesFor(
+  settings: NotifySettings,
+  dest: NotifyDestKey,
+  failCount: number
+): boolean {
+  return destOn(settings, "dayNotes", dest, failCount);
+}
+
+export function shouldNotifySubmission(settings: NotifySettings, failCount: number): boolean {
+  return eventFires(settings, "roundSubmit", failCount) || eventFires(settings, "dayNotes", failCount);
+}
+
+export function shouldSendLocation(settings: NotifySettings): boolean {
+  return eventFires(settings, "locationCheckIn", 1);
+}
+
+export function normalizeNotifySettings(raw: unknown): NotifySettings {
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const base = isV2(src) ? DEFAULT_NOTIFY_SETTINGS : migrateV1(src);
+  const events = (src.events ?? {}) as Record<string, unknown>;
+  const payload = (src.payload ?? {}) as Record<string, unknown>;
+  const when = (src.when ?? {}) as Record<string, unknown>;
+  if (!isV2(src)) {
+    return {
+      ...base,
+      payload: {
+        fullForm: flag(payload.fullForm, base.payload.fullForm),
+        faultsOnly: flag(payload.faultsOnly, base.payload.faultsOnly),
+        photos: flag(payload.photos, base.payload.photos),
+        pdf: flag(payload.pdf, base.payload.pdf),
+        satelliteImage: flag(payload.satelliteImage, base.payload.satelliteImage),
+        coords: flag(payload.coords, base.payload.coords),
+        name: flag(payload.name, base.payload.name),
+        time: flag(payload.time, base.payload.time),
+      },
+    };
+  }
+  return {
+    version: 2,
+    events: {
+      roundSubmit: eventRoute(events.roundSubmit, DEFAULT_NOTIFY_SETTINGS.events.roundSubmit),
+      dayNotes: eventRoute(events.dayNotes, DEFAULT_NOTIFY_SETTINGS.events.dayNotes),
+      locationCheckIn: eventRoute(
+        events.locationCheckIn,
+        DEFAULT_NOTIFY_SETTINGS.events.locationCheckIn
+      ),
+    },
+    payload: {
+      fullForm: flag(payload.fullForm, DEFAULT_NOTIFY_SETTINGS.payload.fullForm),
+      faultsOnly: flag(payload.faultsOnly, DEFAULT_NOTIFY_SETTINGS.payload.faultsOnly),
+      photos: flag(payload.photos, DEFAULT_NOTIFY_SETTINGS.payload.photos),
+      pdf: flag(payload.pdf, DEFAULT_NOTIFY_SETTINGS.payload.pdf),
+      satelliteImage: flag(payload.satelliteImage, DEFAULT_NOTIFY_SETTINGS.payload.satelliteImage),
+      coords: flag(payload.coords, DEFAULT_NOTIFY_SETTINGS.payload.coords),
+      name: flag(payload.name, DEFAULT_NOTIFY_SETTINGS.payload.name),
+      time: flag(payload.time, DEFAULT_NOTIFY_SETTINGS.payload.time),
+    },
+    when: {
+      submitImmediate: flag(when.submitImmediate, DEFAULT_NOTIFY_SETTINGS.when.submitImmediate),
+      locationOnSlot: flag(when.locationOnSlot, DEFAULT_NOTIFY_SETTINGS.when.locationOnSlot),
+    },
+  };
 }

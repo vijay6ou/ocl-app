@@ -1,8 +1,15 @@
 import { decode, encode } from "jpeg-js";
-import { getLocationDiscordThread, getNotifySettings, saveLocationDiscordThread } from "@/lib/store";
+import {
+  getDiscordThread,
+  getLocationDiscordThread,
+  getNotifySettings,
+  saveDiscordThread,
+  saveLocationDiscordThread,
+} from "@/lib/store";
 import { plantSlotKey, PLANT_TIME_ZONE_LABEL } from "@/lib/submit-time";
 import type { LocationPing, PublicUser } from "@/lib/types";
-import { shouldSendLocation } from "@/lib/notify-settings";
+import { destOn, shouldSendLocation } from "@/lib/notify-settings";
+import { sendTelegramText } from "@/lib/telegram";
 
 const APP_UA = "AdaniCements/1.15.0";
 
@@ -15,6 +22,10 @@ const SNAP_H = 420;
 
 function locationWebhook() {
   return (process.env.LOCATION_DISCORD_WEBHOOK_URL ?? "").trim();
+}
+
+function reportsWebhook() {
+  return (process.env.DISCORD_WEBHOOK_URL ?? "").trim();
 }
 
 export function mapsSatelliteUrl(lat: number, lng: number) {
@@ -117,30 +128,27 @@ export async function fetchSatelliteJpeg(lat: number, lng: number): Promise<Buff
   }
 }
 
-export async function notifyLocationDiscord(ping: LocationPing, jpeg: Buffer | null) {
-  const settings = await getNotifySettings();
-  if (!shouldSendLocation(settings)) return { status: "skipped" as const, attached: false };
-  const hook = locationWebhook();
-  if (!hook) return { status: "skipped" as const, attached: false };
+async function postLocationDiscord(
+  hook: string,
+  ping: LocationPing,
+  content: string,
+  jpeg: Buffer | null,
+  kind: "location" | "reports"
+): Promise<"ok" | "failed" | "skipped"> {
+  if (!hook) return "skipped";
   const date = ping.slot.slice(0, 10);
-  const existing = await getLocationDiscordThread(date);
-  const attach = Boolean(jpeg) && settings.payload.satelliteImage;
+  const existing =
+    kind === "location" ? await getLocationDiscordThread(date) : await getDiscordThread(date);
   const form = new FormData();
   const payload: Record<string, unknown> = {
-    username: "Adani Cements location",
-    content: formatLocationDiscord(
-      { ...ping, satelliteAttached: attach },
-      {
-        coords: settings.payload.coords,
-        name: settings.payload.name,
-        time: settings.payload.time,
-        satellite: settings.payload.satelliteImage,
-      }
-    ).slice(0, 1900),
+    username: kind === "location" ? "Adani Cements location" : "Adani Cements PM",
+    content,
   };
-  if (!existing?.threadId) payload.thread_name = `Location · ${date}`;
+  if (!existing?.threadId) {
+    payload.thread_name = kind === "location" ? `Location · ${date}` : `${date} · Adani Cements electrical PM`;
+  }
   form.append("payload_json", JSON.stringify(payload));
-  if (attach && jpeg) {
+  if (jpeg) {
     form.append("files[0]", new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }), "satellite.jpg");
   }
   const url = new URL(hook);
@@ -152,14 +160,58 @@ export async function notifyLocationDiscord(ping: LocationPing, jpeg: Buffer | n
     headers: { "User-Agent": APP_UA },
   });
   const raw = await res.text();
-  if (!res.ok) return { status: "failed" as const, attached: attach };
+  if (!res.ok) return "failed";
   try {
     const msg = JSON.parse(raw) as { channel_id?: string };
-    if (msg.channel_id) await saveLocationDiscordThread(date, String(msg.channel_id));
+    if (msg.channel_id) {
+      if (kind === "location") await saveLocationDiscordThread(date, String(msg.channel_id));
+      else await saveDiscordThread(date, String(msg.channel_id));
+    }
   } catch {
     /* thread id is optional for a successful post */
   }
-  return { status: "ok" as const, attached: attach };
+  return "ok";
+}
+
+function combineStatus(parts: Array<"ok" | "failed" | "skipped">): "ok" | "failed" | "skipped" {
+  if (parts.some((p) => p === "ok")) return "ok";
+  if (parts.some((p) => p === "failed")) return "failed";
+  return "skipped";
+}
+
+export async function notifyLocationDiscord(ping: LocationPing, jpeg: Buffer | null) {
+  const settings = await getNotifySettings();
+  if (!shouldSendLocation(settings)) return { status: "skipped" as const, attached: false };
+  const attach = Boolean(jpeg) && settings.payload.satelliteImage;
+  const content = formatLocationDiscord(
+    { ...ping, satelliteAttached: attach },
+    {
+      coords: settings.payload.coords,
+      name: settings.payload.name,
+      time: settings.payload.time,
+      satellite: settings.payload.satelliteImage,
+    }
+  ).slice(0, 1900);
+  const parts: Array<"ok" | "failed" | "skipped"> = [];
+  if (destOn(settings, "locationCheckIn", "discordLocation")) {
+    parts.push(await postLocationDiscord(locationWebhook(), ping, content, attach ? jpeg : null, "location"));
+  }
+  if (destOn(settings, "locationCheckIn", "discordReports")) {
+    parts.push(await postLocationDiscord(reportsWebhook(), ping, content, attach ? jpeg : null, "reports"));
+  }
+  if (destOn(settings, "locationCheckIn", "telegram")) {
+    try {
+      parts.push(
+        await sendTelegramText(
+          content,
+          attach && jpeg ? { name: "satellite.jpg", bytes: jpeg } : undefined
+        )
+      );
+    } catch {
+      parts.push("failed");
+    }
+  }
+  return { status: combineStatus(parts), attached: attach };
 }
 
 export async function buildLocationPing(

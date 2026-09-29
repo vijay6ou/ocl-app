@@ -2,7 +2,7 @@
 
 Cloud-backed technician log for **Adani Cements, Electrical Department, Chittapur**. The plant is a tree: **plant → section → area**. The first plant is Adani Cements Chittapur. Material handling is a section with areas Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher. Admins add empty plants, sections, and areas when needed. A technician only sees the locations they are assigned. The server file store is the source of truth for the equipment catalogue, people, submissions, and defect photos.
 
-The technician APK opens the plant server only. Admins publish the live catalogue from a Forms-style builder. After a successful submit the plant server posts Discord and Telegram according to **Notifications** (defaults: four Discord messages in that date’s thread — full form, faults, photos, PDF — plus Telegram if a chat is bound). Location check-ins stay on the Discord location channel. Catalogue and draft saves never notify.
+The technician APK opens the plant server only. Admins publish the live catalogue from a Forms-style builder. After a successful submit the plant server posts Discord and Telegram according to the **Notifications** routing matrix (defaults: four Discord report messages plus Telegram; day notes Telegram only; location on the Discord location channel). Catalogue and draft saves never notify.
 
 The app UI never shows the server address, Discord webhook, or env paths. User-visible branding is **Adani Cements**. Existing OCL equipment ids and tags stay in the catalogue.
 
@@ -39,7 +39,7 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 1. Sign in with a personal account.
 2. Open an area from the plant tree. You only see plants, sections, and areas assigned to you. Material handling currently has Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher.
 3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**). Each photo is filed under that machine’s **equipment ID** in Files (plant → section → area → equipment ID).
-4. On **Summary**, write a short day note and attach photos if needed, then submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord and Telegram are notified according to **Notifications** (defaults: Discord four messages plus Telegram if a chat is bound). Catalogue and draft saves never notify.
+4. On **Summary**, write a short day note and attach photos if needed, then submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord and Telegram follow the **Notifications** matrix (defaults: Discord reports + Telegram for the round; Telegram only for day notes). Catalogue and draft saves never notify.
 5. Open **Files** to browse the same plant tree and open a motor’s album (keyed by equipment ID). Round photos are already there. You can also add a nameplate or defect shot, or a **text note / log / pasted plant data**, from the rear camera, gallery, or the note box — all in that machine’s folder.
 6. Print / save PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos and the day note). Discord and Telegram follow the ticks on **Notifications**.
 7. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
@@ -50,7 +50,7 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 2. Open an area to edit its form. **Save draft** keeps a half-filled card on the plant server (technicians still run the last published form). **Publish to plant server** goes live. **Add equipment block** can drop a **super block** (a stacker of five motors) or one type. **Copy card** on a machine duplicates it for motor 1 vs motor 2. **Save as super block** bundles the current form’s types for reuse.
 3. Open **Blocks** to edit a type, **Copy type** for a near-duplicate (change one or two checks), add a type, or build a super block from types. **Copy kit** does the same for super blocks. Saving a type updates every working form that already uses it. Submitted records stay frozen.
 4. Open **People** → **Locations** to assign a technician a whole plant, a section, or named areas (more than one is allowed).
-5. Open **Notifications** to turn Discord reports, Discord location, and Telegram on or off, choose full form / faults / photos / PDF / satellite / coords / name / time, and send a test. Location never goes to Telegram. Catalogue drafts never notify.
+5. Open **Notifications** to route each event: round submit, day notes, and location check-in can each go to Discord reports, Discord location, Telegram, or any mix. Defaults: submit → Discord reports + Telegram; day notes → Telegram only; location → Discord location only. Catalogue drafts never notify.
 
 ### Admin: add a parameter column
 
