@@ -821,7 +821,7 @@
         esc(r.status) +
         "</span> " +
         "<button class='btn small' type='button' data-act='open'>Open</button> " +
-        "<button class='btn small' type='button' data-act='print'>Print / PDF</button>";
+        "<button class='btn small' type='button' data-act='print'>Print / share PDF</button>";
       el.querySelector("[data-act=open]").onclick = () => openRecord(r.id);
       el.querySelector("[data-act=print]").onclick = () => {
         lastRecord = loadRecord(r.id) || r;

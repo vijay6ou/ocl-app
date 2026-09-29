@@ -70,7 +70,7 @@ export function RecordView({ id, initial }: { id: string; initial?: Submission }
             {record.status}
           </Badge>
           <Button variant="outline" onClick={() => printReport()}>
-            Print / PDF
+            Print / share PDF
           </Button>
           {user?.role === "admin" ? (
             <Button variant="destructive" onClick={() => void remove()}>

@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
@@ -308,12 +309,24 @@ public class MainActivity extends Activity {
 
     void printHtml(final String html, final String jobName) {
         runOnUiThread(() -> {
+            if (printWebView != null && printWebView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) printWebView.getParent()).removeView(printWebView);
+            }
             printWebView = new WebView(this);
             printWebView.getSettings().setJavaScriptEnabled(false);
+            int width = Math.max(800, getResources().getDisplayMetrics().widthPixels);
+            int height = Math.max(1131, (int) (width * 297f / 210f));
+            printWebView.setLayoutParams(new ViewGroup.LayoutParams(width, height));
+            printWebView.setAlpha(0f);
+            ViewGroup root = findViewById(android.R.id.content);
+            if (root != null) root.addView(printWebView);
             printWebView.setWebViewClient(new WebViewClient() {
+                boolean finished;
                 @Override
                 public void onPageFinished(WebView view, String url) {
-                    PrintHelper.print(MainActivity.this, view, jobName);
+                    if (finished) return;
+                    finished = true;
+                    view.postDelayed(() -> PdfShareHelper.offer(MainActivity.this, view, jobName), 400);
                 }
             });
             String base = usingLocalUi ? LOCAL_UI : (getServerUrl().isEmpty() ? LOCAL_UI : getServerUrl() + "/");

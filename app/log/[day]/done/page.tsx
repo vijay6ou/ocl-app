@@ -71,7 +71,7 @@ function DoneInner() {
               </ul>
             ) : null}
             <div className="flex flex-wrap gap-2">
-              <Button render={<Link href={`/print/${record.id}`} />}>Print / save PDF</Button>
+              <Button render={<Link href={`/print/${record.id}`} />}>Print / share PDF</Button>
               <Button variant="outline" render={<Link href={`/history/${record.id}`} />}>
                 Open record
               </Button>

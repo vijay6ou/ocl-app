@@ -1,9 +1,9 @@
 export const ANDROID_APP = {
   packageId: "com.ocl.maintenance",
   displayName: "Adani Cements",
-  versionName: "1.15.0",
-  versionCode: 17,
+  versionName: "1.16.0",
+  versionCode: 18,
   apkFileName: "ocl-maintenance.apk",
   notes:
-    "One location ping every 15 minutes. The app does not keep GPS running while you work.",
+    "Share the round PDF from Print / share PDF to WhatsApp, Drive, Gmail, or another app. Print and save stay available.",
 } as const;

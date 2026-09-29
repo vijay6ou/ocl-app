@@ -11,7 +11,7 @@ import type { LocationPing, PublicUser } from "@/lib/types";
 import { destOn, shouldSendLocation } from "@/lib/notify-settings";
 import { sendTelegramText } from "@/lib/telegram";
 
-const APP_UA = "AdaniCements/1.15.0";
+const APP_UA = "AdaniCements/1.16.0";
 
 /** Esri ArcGIS Online World Imagery MapServer (no API key). */
 const ESRI_WORLD_IMAGERY_EXPORT =
