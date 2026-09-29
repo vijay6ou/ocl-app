@@ -132,8 +132,14 @@ server**. Technicians pick it up on next load.
 
 **Telegram is not posting.**
 The bot token lives in `/etc/ocl-technician-log.env`. Someone must send a private
-message to `@Office3331bot`. Then **Storage** → **Check for a DM**. Chat id is
+message to `@Office3331bot`. Then **Notifications** → **Check for a DM**. Chat id is
 stored on the plant server. Admin UI never shows the token or chat id.
+
+**An admin wants to change what Discord or Telegram send.**
+**Notifications** (Control). Master switches per destination, ticks for full form /
+faults / photos / PDF / satellite / coords / name / time, and when (immediate
+submit, 15-minute location, only if faults). Save, then the next event uses it.
+Catalogue and draft saves never notify. Location stays on the location channel.
 
 **The APK must be rebuilt.**
 Plant app is **1.15.0** (versionCode 17). Build with `./gradlew :app:publishToPlantServer`
@@ -143,7 +149,8 @@ from `android/` after installing SDK 34.
 Technicians (and any signed-in session) post lat/lng every 15 minutes to
 `LOCATION_DISCORD_WEBHOOK_URL` in `/etc/ocl-technician-log.env`. The server
 fetches a free **Esri World Imagery** JPEG (ArcGIS MapServer export, no key)
-and attaches it when the fetch works. Coordinates are always included. Do not
+and attaches it when the fetch works and **Notifications** has satellite on.
+Coordinates, name, and time follow the ticks on that page. Do not
 set `GOOGLE_MAPS_STATIC_KEY`. The Android shell uses LocationManager when the
 OS permission is granted. WebView `navigator.geolocation` is not used to
 decide a permission banner (that banner is removed).

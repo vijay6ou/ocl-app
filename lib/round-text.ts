@@ -33,7 +33,11 @@ export function roundHeader(record: Submission) {
 }
 
 /** Full round in the same order as the in-app record / print view. */
-export function formatFullRound(record: Submission): string {
+export function formatFullRound(
+  record: Submission,
+  opts?: { includeDayNotes?: boolean }
+): string {
+  const includeDayNotes = opts?.includeDayNotes !== false;
   const lines: string[] = [roundHeader(record), ""];
 
   if (record.fails.length > 0) {
@@ -92,12 +96,14 @@ export function formatFullRound(record: Submission): string {
     }
   }
 
-  lines.push("");
-  lines.push("Day notes");
-  lines.push("─────────");
-  if (record.dayNotes?.trim()) lines.push(record.dayNotes.trim());
-  else lines.push("(none)");
-  if (record.dayPhotos?.length) lines.push(`${record.dayPhotos.length} photo(s) attached`);
+  if (includeDayNotes) {
+    lines.push("");
+    lines.push("Day notes");
+    lines.push("─────────");
+    if (record.dayNotes?.trim()) lines.push(record.dayNotes.trim());
+    else lines.push("(none)");
+    if (record.dayPhotos?.length) lines.push(`${record.dayPhotos.length} photo(s) attached`);
+  }
   lines.push("");
   lines.push(
     record.selfie

@@ -102,7 +102,7 @@ export async function telegramPublicStatus(): Promise<TelegramPublicStatus> {
       ? String((me.body.result as { username?: string }).username ?? state.botUsername)
       : state.botUsername || BOT_USERNAME;
   const linked = Boolean(envChatId() || state.chatId);
-  let lastError = state.lastError;
+  let lastError = state.lastError ? publicError(state.lastError) : "";
   if (botToken() && me && !me.ok) {
     lastError = publicError(String(me.body.description || "getMe failed"));
   }

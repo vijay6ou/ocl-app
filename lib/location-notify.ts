@@ -1,7 +1,8 @@
 import { decode, encode } from "jpeg-js";
-import { getLocationDiscordThread, saveLocationDiscordThread } from "@/lib/store";
+import { getLocationDiscordThread, getNotifySettings, saveLocationDiscordThread } from "@/lib/store";
 import { plantSlotKey, PLANT_TIME_ZONE_LABEL } from "@/lib/submit-time";
 import type { LocationPing, PublicUser } from "@/lib/types";
+import { shouldSendLocation } from "@/lib/notify-settings";
 
 const APP_UA = "AdaniCements/1.15.0";
 
@@ -20,21 +21,30 @@ export function mapsSatelliteUrl(lat: number, lng: number) {
   return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
 }
 
-export function formatLocationDiscord(ping: LocationPing) {
+export function formatLocationDiscord(
+  ping: LocationPing,
+  opts?: { coords?: boolean; name?: boolean; time?: boolean; satellite?: boolean }
+) {
+  const coords = opts?.coords !== false;
+  const name = opts?.name !== false;
+  const time = opts?.time !== false;
+  const satellite = opts?.satellite !== false;
   const acc =
     ping.accuracy != null && Number.isFinite(ping.accuracy)
       ? `${Math.round(ping.accuracy)} m`
       : "unknown";
   const snap = ping.satelliteAttached
     ? "Satellite snapshot attached."
-    : "Satellite snapshot not attached (imagery fetch failed). Open the map link.";
-  return [
-    `Location check-in · ${ping.slot}`,
-    `${ping.name} (${ping.username})`,
-    `Lat ${ping.lat.toFixed(6)}  Lng ${ping.lng.toFixed(6)}  ±${acc}`,
-    `Map: ${ping.mapUrl}`,
-    snap,
-  ].join("\n");
+    : "Satellite snapshot not attached (imagery fetch failed).";
+  const lines = ["Location check-in"];
+  if (time) lines.push(ping.slot);
+  if (name) lines.push(`${ping.name} (${ping.username})`);
+  if (coords) {
+    lines.push(`Lat ${ping.lat.toFixed(6)}  Lng ${ping.lng.toFixed(6)}  ±${acc}`);
+    lines.push(`Map: ${ping.mapUrl}`);
+  }
+  if (satellite) lines.push(snap);
+  return lines.join("\n");
 }
 
 function imageryBbox(lat: number, lng: number) {
@@ -108,18 +118,29 @@ export async function fetchSatelliteJpeg(lat: number, lng: number): Promise<Buff
 }
 
 export async function notifyLocationDiscord(ping: LocationPing, jpeg: Buffer | null) {
+  const settings = await getNotifySettings();
+  if (!shouldSendLocation(settings)) return { status: "skipped" as const, attached: false };
   const hook = locationWebhook();
   if (!hook) return { status: "skipped" as const, attached: false };
   const date = ping.slot.slice(0, 10);
   const existing = await getLocationDiscordThread(date);
+  const attach = Boolean(jpeg) && settings.payload.satelliteImage;
   const form = new FormData();
   const payload: Record<string, unknown> = {
     username: "Adani Cements location",
-    content: formatLocationDiscord({ ...ping, satelliteAttached: Boolean(jpeg) }).slice(0, 1900),
+    content: formatLocationDiscord(
+      { ...ping, satelliteAttached: attach },
+      {
+        coords: settings.payload.coords,
+        name: settings.payload.name,
+        time: settings.payload.time,
+        satellite: settings.payload.satelliteImage,
+      }
+    ).slice(0, 1900),
   };
   if (!existing?.threadId) payload.thread_name = `Location · ${date}`;
   form.append("payload_json", JSON.stringify(payload));
-  if (jpeg) {
+  if (attach && jpeg) {
     form.append("files[0]", new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }), "satellite.jpg");
   }
   const url = new URL(hook);
@@ -131,14 +152,14 @@ export async function notifyLocationDiscord(ping: LocationPing, jpeg: Buffer | n
     headers: { "User-Agent": APP_UA },
   });
   const raw = await res.text();
-  if (!res.ok) return { status: "failed" as const, attached: Boolean(jpeg) };
+  if (!res.ok) return { status: "failed" as const, attached: attach };
   try {
     const msg = JSON.parse(raw) as { channel_id?: string };
     if (msg.channel_id) await saveLocationDiscordThread(date, String(msg.channel_id));
   } catch {
     /* thread id is optional for a successful post */
   }
-  return { status: "ok" as const, attached: Boolean(jpeg) };
+  return { status: "ok" as const, attached: attach };
 }
 
 export async function buildLocationPing(

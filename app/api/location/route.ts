@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/auth";
-import { findLocationPing, getLocationWindow, saveLocationPing } from "@/lib/store";
-import { buildLocationPing, notifyLocationDiscord } from "@/lib/location-notify";
+import { findLocationPing, getLocationWindow, getNotifySettings, saveLocationPing } from "@/lib/store";
+import { fetchSatelliteJpeg, mapsSatelliteUrl, notifyLocationDiscord } from "@/lib/location-notify";
 import { isInsideLocationWindow } from "@/lib/location-window";
+import { shouldSendLocation } from "@/lib/notify-settings";
 import { plantSlotKey } from "@/lib/submit-time";
+import type { LocationPing } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -31,14 +33,25 @@ export async function POST(req: Request) {
     }
     const accuracy =
       body.accuracy == null || body.accuracy === "" ? undefined : Number(body.accuracy);
-    const { ping, jpeg } = await buildLocationPing(
-      user,
+    const settings = await getNotifySettings();
+    const send = shouldSendLocation(settings);
+    const jpeg = send && settings.payload.satelliteImage ? await fetchSatelliteJpeg(lat, lng) : null;
+    const ping: LocationPing = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      username: user.username,
+      name: user.name,
+      role: user.role,
       lat,
       lng,
-      Number.isFinite(accuracy) ? accuracy : undefined
-    );
+      accuracy: Number.isFinite(accuracy) ? accuracy : undefined,
+      slot,
+      recordedAt: new Date().toISOString(),
+      mapUrl: mapsSatelliteUrl(lat, lng),
+      satelliteAttached: Boolean(jpeg),
+    };
     const saved = await saveLocationPing(ping);
-    const notify = await notifyLocationDiscord(saved, jpeg);
+    const notify = send ? await notifyLocationDiscord(saved, jpeg) : { status: "skipped" as const };
     return NextResponse.json({
       ok: true,
       slot: saved.slot,

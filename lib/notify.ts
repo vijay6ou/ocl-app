@@ -1,8 +1,11 @@
 import {
   clearDiscordThread,
   getDiscordThread,
+  getLocationDiscordThread,
+  getNotifySettings,
   getPhoto,
   saveDiscordThread,
+  saveLocationDiscordThread,
 } from "@/lib/store";
 import { promises as fs } from "fs";
 import path from "path";
@@ -18,6 +21,7 @@ import { sanitizePublicText } from "@/lib/public-text";
 import { bakeUprightImage } from "@/lib/image-orient";
 import type { PhotoRef, Submission } from "@/lib/types";
 import { sendTelegramText, type TelegramChannelStatus } from "@/lib/telegram";
+import { shouldSendRoundSubmit, type NotifySettings } from "@/lib/notify-settings";
 
 export type NotifyChannelStatus = "ok" | "skipped" | "failed";
 
@@ -102,52 +106,75 @@ type DiscordPost = {
   files?: NotifyFile[];
 };
 
-function buildDiscordPosts(record: Submission, pdf: Buffer, photos: PdfPhoto[]): DiscordPost[] {
-  const full = formatFullRound(record);
+function buildDiscordPosts(
+  record: Submission,
+  pdf: Buffer | null,
+  photos: PdfPhoto[],
+  settings: NotifySettings
+): { kind: string; post: DiscordPost }[] {
+  const includeDayNotes = settings.events.dayNotes;
+  const full = formatFullRound(record, { includeDayNotes });
   const header = roundHeader(record);
-  const fullPost: DiscordPost =
-    full.length <= DISCORD_TEXT_LIMIT
-      ? { content: full }
-      : {
-          content: `${header}\n\nFull round attached (same layout as the in-app record).`.slice(
-            0,
-            DISCORD_TEXT_LIMIT
-          ),
-          files: [
-            {
-              name: fullFormFilename(record),
-              mime: "text/plain; charset=utf-8",
-              bytes: Buffer.from(full, "utf8"),
-            },
-          ],
-        };
+  const items: { kind: string; post: DiscordPost }[] = [];
 
-  const photoFiles: NotifyFile[] = [];
-  for (const photo of photos) {
-    if (photoFiles.length >= DISCORD_MAX_FILES) break;
-    if (photo.bytes.length > DISCORD_FILE_LIMIT) continue;
-    photoFiles.push({
-      name: photo.meta.filename || `photo-${photo.meta.id}.jpg`,
-      mime: photo.meta.mime || "image/jpeg",
-      bytes: photo.bytes,
+  if (settings.payload.fullForm) {
+    const fullPost: DiscordPost =
+      full.length <= DISCORD_TEXT_LIMIT
+        ? { content: full }
+        : {
+            content: `${header}\n\nFull round attached (same layout as the in-app record).`.slice(
+              0,
+              DISCORD_TEXT_LIMIT
+            ),
+            files: [
+              {
+                name: fullFormFilename(record),
+                mime: "text/plain; charset=utf-8",
+                bytes: Buffer.from(full, "utf8"),
+              },
+            ],
+          };
+    items.push({ kind: "full-form", post: fullPost });
+  }
+
+  if (settings.payload.faultsOnly) {
+    items.push({ kind: "faults", post: { content: formatFaultsOnly(record).slice(0, DISCORD_TEXT_LIMIT) } });
+  }
+
+  if (settings.payload.photos) {
+    const photoFiles: NotifyFile[] = [];
+    for (const photo of photos) {
+      if (photoFiles.length >= DISCORD_MAX_FILES) break;
+      if (photo.bytes.length > DISCORD_FILE_LIMIT) continue;
+      photoFiles.push({
+        name: photo.meta.filename || `photo-${photo.meta.id}.jpg`,
+        mime: photo.meta.mime || "image/jpeg",
+        bytes: photo.bytes,
+      });
+    }
+    items.push({
+      kind: "photos",
+      post: {
+        content:
+          photoFiles.length > 0
+            ? `Photos (${photoFiles.length}${photos.length > photoFiles.length ? ` of ${photos.length}` : ""})`
+            : "Photos\nNo photos attached.",
+        files: photoFiles,
+      },
     });
   }
 
-  return [
-    fullPost,
-    { content: formatFaultsOnly(record).slice(0, DISCORD_TEXT_LIMIT) },
-    {
-      content:
-        photoFiles.length > 0
-          ? `Photos (${photoFiles.length}${photos.length > photoFiles.length ? ` of ${photos.length}` : ""})`
-          : "Photos\nNo photos attached.",
-      files: photoFiles,
-    },
-    {
-      content: "PDF report",
-      files: [{ name: pdfFilename(record), mime: "application/pdf", bytes: pdf }],
-    },
-  ];
+  if (settings.payload.pdf && pdf) {
+    items.push({
+      kind: "pdf",
+      post: {
+        content: "PDF report",
+        files: [{ name: pdfFilename(record), mime: "application/pdf", bytes: pdf }],
+      },
+    });
+  }
+
+  return items;
 }
 
 async function postDiscord(
@@ -205,7 +232,7 @@ async function postDiscord(
 }
 
 async function sendDiscordSequence(
-  posts: DiscordPost[],
+  items: { kind: string; post: DiscordPost }[],
   threadName: string,
   threadId: string | null
 ): Promise<{
@@ -213,50 +240,54 @@ async function sendDiscordSequence(
   threadId?: string;
   parts?: { kind: string; content: string; files: string[]; messageId?: string }[];
 }> {
+  if (items.length === 0) return { status: "skipped" };
   let tid = threadId;
-  const kinds = ["full-form", "faults", "photos", "pdf"];
   const parts: { kind: string; content: string; files: string[]; messageId?: string }[] = [];
-  for (let i = 0; i < posts.length; i += 1) {
+  for (let i = 0; i < items.length; i += 1) {
     const create = i === 0 && !tid;
-    const result = await postDiscord(posts[i], tid, create, threadName);
+    const result = await postDiscord(items[i].post, tid, create, threadName);
     if (result.status !== "ok") return result;
     if (result.threadId) tid = result.threadId;
     parts.push({
-      kind: kinds[i] ?? `part-${i + 1}`,
-      content: posts[i].content.slice(0, 500),
-      files: (posts[i].files ?? []).map((f) => f.name),
+      kind: items[i].kind,
+      content: items[i].post.content.slice(0, 500),
+      files: (items[i].post.files ?? []).map((f) => f.name),
       messageId: result.messageId,
     });
-    if (i < posts.length - 1) await sleep(400);
+    if (i < items.length - 1) await sleep(400);
   }
   return { status: "ok", threadId: tid ?? undefined, parts };
 }
 
 async function sendDiscord(
   record: Submission,
-  pdf: Buffer,
-  photos: PdfPhoto[]
+  pdf: Buffer | null,
+  photos: PdfPhoto[],
+  settings: NotifySettings
 ): Promise<{ status: NotifyChannelStatus; parts?: { kind: string; content: string; files: string[]; messageId?: string }[] }> {
+  if (!settings.destinations.discordReports) return { status: "skipped" };
   const hook = discordWebhook();
   if (!hook) return { status: "skipped" };
   const date = record.meta.date;
-  const posts = buildDiscordPosts(record, pdf, photos);
+  const items = buildDiscordPosts(record, pdf, photos, settings);
+  if (items.length === 0) return { status: "skipped" };
   const name = discordThreadName(record);
   const existing = await getDiscordThread(date);
-  const first = await sendDiscordSequence(posts, name, existing?.threadId ?? null);
+  const first = await sendDiscordSequence(items, name, existing?.threadId ?? null);
   if (first.status === "ok") {
     if (first.threadId) await saveDiscordThread(date, first.threadId);
     return { status: "ok", parts: first.parts };
   }
+  if (first.status === "skipped") return { status: "skipped" };
   if (existing) {
     await clearDiscordThread(date);
-    const retry = await sendDiscordSequence(posts, name, null);
+    const retry = await sendDiscordSequence(items, name, null);
     if (retry.status === "ok") {
       if (retry.threadId) await saveDiscordThread(date, retry.threadId);
       return { status: "ok", parts: retry.parts };
     }
   }
-  return { status: first.status === "skipped" ? "skipped" : "failed" };
+  return { status: "failed" };
 }
 
 function warningFor(result: NotifyResult) {
@@ -269,44 +300,60 @@ function warningFor(result: NotifyResult) {
   return undefined;
 }
 
-async function sendTelegram(record: Submission): Promise<TelegramChannelStatus> {
+async function sendTelegram(record: Submission, settings: NotifySettings): Promise<TelegramChannelStatus> {
+  if (!settings.destinations.telegram) return "skipped";
   try {
-    const full = formatFullRound(record);
-    const notes = record.dayNotes?.trim() || "(none)";
-    const header = `${roundHeader(record)}\n\nDay notes\n${notes}`;
-    if (full.length <= 3900) {
-      return await sendTelegramText(full);
+    const includeDayNotes = settings.events.dayNotes;
+    const full = formatFullRound(record, { includeDayNotes });
+    const notes = includeDayNotes ? record.dayNotes?.trim() || "(none)" : "";
+    const header = includeDayNotes
+      ? `${roundHeader(record)}\n\nDay notes\n${notes}`
+      : roundHeader(record);
+    if (settings.payload.fullForm) {
+      if (full.length <= 3900) return await sendTelegramText(full);
+      return await sendTelegramText(header.slice(0, 3900), {
+        name: fullFormFilename(record),
+        bytes: Buffer.from(full, "utf8"),
+      });
     }
-    return await sendTelegramText(header.slice(0, 3900), {
-      name: fullFormFilename(record),
-      bytes: Buffer.from(full, "utf8"),
-    });
+    if (includeDayNotes) return await sendTelegramText(header.slice(0, 3900));
+    return await sendTelegramText(`${roundHeader(record)}\n\nRound saved on the plant server.`.slice(0, 3900));
   } catch {
     return "failed";
   }
 }
 
 export async function notifySubmission(record: Submission): Promise<NotifyResult> {
+  const settings = await getNotifySettings();
   const result: NotifyResult = { discord: "skipped", telegram: "skipped" };
   let discordParts: { kind: string; content: string; files: string[]; messageId?: string }[] | undefined;
+  const send = shouldSendRoundSubmit(settings, record.fails.length);
+  if (!send) {
+    result.warning = warningFor(result);
+    return result;
+  }
   try {
-    const photos = await loadPhotos(record);
-    const pdf = await buildSubmissionPdf(record, photos);
+    const wantPhotos = settings.payload.photos || settings.payload.pdf;
+    const photos = wantPhotos && settings.destinations.discordReports ? await loadPhotos(record) : [];
+    const pdf =
+      settings.payload.pdf && settings.destinations.discordReports
+        ? await buildSubmissionPdf(record, photos)
+        : null;
     try {
-      const disc = await sendDiscord(record, pdf, photos);
+      const disc = await sendDiscord(record, pdf, photos, settings);
       result.discord = disc.status;
       discordParts = disc.parts;
     } catch {
-      result.discord = discordWebhook() ? "failed" : "skipped";
+      result.discord = settings.destinations.discordReports && discordWebhook() ? "failed" : "skipped";
     }
     try {
-      result.telegram = await sendTelegram(record);
+      result.telegram = await sendTelegram(record, settings);
     } catch {
-      result.telegram = "failed";
+      result.telegram = settings.destinations.telegram ? "failed" : "skipped";
     }
   } catch {
-    result.discord = discordWebhook() ? "failed" : "skipped";
-    result.telegram = "failed";
+    result.discord = settings.destinations.discordReports && discordWebhook() ? "failed" : "skipped";
+    result.telegram = settings.destinations.telegram ? "failed" : "skipped";
   }
   result.warning = warningFor(result);
   try {
@@ -330,4 +377,77 @@ export async function notifySubmission(record: Submission): Promise<NotifyResult
     /* receipt is diagnostics only */
   }
   return result;
+}
+
+export async function sendAdminNotifyTest(
+  dest: "discord" | "telegram" | "location"
+): Promise<{ status: NotifyChannelStatus; detail: string }> {
+  if (dest === "telegram") {
+    const result = await sendTelegramText(
+      "Plant log test: Notifications control. Submit and day notes use this chat when Telegram is on."
+    );
+    const detail =
+      result === "ok"
+        ? "Test sent to the linked Telegram chat."
+        : result === "skipped"
+          ? "Telegram is not linked yet. Send a private message to @Office3331bot, then Check for a DM."
+          : "Telegram test failed.";
+    return { status: result, detail };
+  }
+  if (dest === "location") {
+    const hook = (process.env.LOCATION_DISCORD_WEBHOOK_URL ?? "").trim();
+    if (!hook) return { status: "skipped", detail: "Location channel is not configured on the plant server." };
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = await getLocationDiscordThread(today);
+    const form = new FormData();
+    const payload: Record<string, unknown> = {
+      username: "Adani Cements location",
+      content: "Notifications control: location-channel test. No coordinates attached.",
+    };
+    if (!existing?.threadId) payload.thread_name = `Location · ${today}`;
+    form.append("payload_json", JSON.stringify(payload));
+    const url = new URL(hook);
+    url.searchParams.set("wait", "true");
+    if (existing?.threadId) url.searchParams.set("thread_id", existing.threadId);
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      body: form,
+      headers: { "User-Agent": APP_UA },
+    });
+    if (!res.ok) return { status: "failed", detail: "Location channel test failed." };
+    try {
+      const msg = JSON.parse(await res.text()) as { channel_id?: string };
+      if (msg.channel_id) await saveLocationDiscordThread(today, String(msg.channel_id));
+    } catch {
+      /* thread id optional */
+    }
+    return { status: "ok", detail: "Test sent to the location channel." };
+  }
+  const hook = discordWebhook();
+  if (!hook) return { status: "skipped", detail: "Reports channel is not configured on the plant server." };
+  const today = new Date().toISOString().slice(0, 10);
+  const existing = await getDiscordThread(today);
+  const form = new FormData();
+  const payload: Record<string, unknown> = {
+    username: "Adani Cements PM",
+    content: "Notifications control: reports-channel test. A real submit still uses the ticks on this page.",
+  };
+  if (!existing?.threadId) payload.thread_name = `${today} · Adani Cements electrical PM`;
+  form.append("payload_json", JSON.stringify(payload));
+  const url = new URL(hook);
+  url.searchParams.set("wait", "true");
+  if (existing?.threadId) url.searchParams.set("thread_id", existing.threadId);
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    body: form,
+    headers: { "User-Agent": APP_UA },
+  });
+  if (!res.ok) return { status: "failed", detail: "Reports channel test failed." };
+  try {
+    const msg = JSON.parse(await res.text()) as { channel_id?: string };
+    if (msg.channel_id) await saveDiscordThread(today, String(msg.channel_id));
+  } catch {
+    /* thread id optional */
+  }
+  return { status: "ok", detail: "Test sent to the reports channel." };
 }

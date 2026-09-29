@@ -8,6 +8,7 @@ import { applyBlocksToCatalogue, EQUIPMENT_BLOCKS, type EquipmentBlock, type Sup
 import { MATERIAL_HANDLING_ID, WEEKDAY_TO_AREA } from "@/lib/hierarchy";
 import { assertSafeRelPath, isAlbumPhoto, mediaRelPath, noteRelPath, type PhotoPlace } from "@/lib/media-path";
 import type { CatalogueDraft, FileNote } from "@/lib/file-docs";
+import { DEFAULT_NOTIFY_SETTINGS, normalizeNotifySettings, type NotifySettings } from "@/lib/notify-settings";
 import {
   DEFAULT_LOCATION_WINDOW,
   normalizeLocationWindow,
@@ -53,6 +54,7 @@ const SUPER_BLOCKS_FILE = path.join(DATA_DIR, "super-blocks.json");
 const FILE_NOTES_FILE = path.join(DATA_DIR, "file-notes.json");
 const CATALOGUE_DRAFTS_FILE = path.join(DATA_DIR, "catalogue-drafts.json");
 const TELEGRAM_FILE = path.join(DATA_DIR, "telegram.json");
+const NOTIFY_SETTINGS_FILE = path.join(DATA_DIR, "notify-settings.json");
 
 type FileStore = {
   catalogue: Catalogue;
@@ -210,6 +212,9 @@ async function seedIfNeeded() {
       lastUpdatesCount: 0,
     });
   }
+
+  const notifySettingsExist = await fs.access(NOTIFY_SETTINGS_FILE).then(() => true).catch(() => false);
+  if (!notifySettingsExist) await writeJson(NOTIFY_SETTINGS_FILE, DEFAULT_NOTIFY_SETTINGS);
 
   await migrateUserPins();
   await migrateUserGrants();
@@ -850,6 +855,23 @@ export async function deleteCatalogueDraft(areaId: string) {
     const all = await readJson<Record<string, CatalogueDraft>>(CATALOGUE_DRAFTS_FILE, {});
     delete all[areaId];
     await writeJson(CATALOGUE_DRAFTS_FILE, all);
+  });
+}
+
+export async function getNotifySettings(): Promise<NotifySettings> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const raw = await readJson<unknown>(NOTIFY_SETTINGS_FILE, DEFAULT_NOTIFY_SETTINGS);
+    return normalizeNotifySettings(raw);
+  });
+}
+
+export async function saveNotifySettings(next: NotifySettings): Promise<NotifySettings> {
+  return withLock(async () => {
+    await seedIfNeeded();
+    const settings = normalizeNotifySettings(next);
+    await writeJson(NOTIFY_SETTINGS_FILE, settings);
+    return settings;
   });
 }
 
