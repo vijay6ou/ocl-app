@@ -24,7 +24,7 @@ import {
 } from "@/lib/round-text";
 import { sanitizePublicText } from "@/lib/public-text";
 import type { Submission } from "@/lib/types";
-import { sendTelegramText, type TelegramChannelStatus } from "@/lib/telegram";
+import { sendTelegramDocument, sendTelegramText, type TelegramChannelStatus } from "@/lib/telegram";
 
 export type NotifyChannelStatus = "ok" | "skipped" | "failed";
 
@@ -275,7 +275,8 @@ function warningFor(result: NotifyResult) {
 async function sendTelegram(
   record: Submission,
   settings: NotifySettings,
-  failCount: number
+  failCount: number,
+  pdf: Buffer | null
 ): Promise<TelegramChannelStatus> {
   const sendRound = destOn(settings, "roundSubmit", "telegram", failCount);
   const sendNotes = destOn(settings, "dayNotes", "telegram", failCount);
@@ -284,15 +285,33 @@ async function sendTelegram(
     if (!sendRound) return await sendTelegramText(formatDayNotes(record).slice(0, 3900));
     const full = formatFullRound(record, { includeDayNotes: sendNotes });
     const header = sendNotes ? formatDayNotes(record) : roundHeader(record);
+    let textStatus: TelegramChannelStatus = "skipped";
     if (settings.payload.fullForm) {
-      if (full.length <= 3900) return await sendTelegramText(full);
-      return await sendTelegramText(header.slice(0, 3900), {
-        name: fullFormFilename(record),
-        bytes: Buffer.from(full, "utf8"),
-      });
+      textStatus =
+        full.length <= 3900
+          ? await sendTelegramText(full)
+          : await sendTelegramText(header.slice(0, 3900), {
+              name: fullFormFilename(record),
+              bytes: Buffer.from(full, "utf8"),
+            });
+    } else if (sendNotes) {
+      textStatus = await sendTelegramText(header.slice(0, 3900));
+    } else {
+      textStatus = await sendTelegramText(
+        `${roundHeader(record)}\n\nRound saved on the plant server.`.slice(0, 3900)
+      );
     }
-    if (sendNotes) return await sendTelegramText(header.slice(0, 3900));
-    return await sendTelegramText(`${roundHeader(record)}\n\nRound saved on the plant server.`.slice(0, 3900));
+    if (textStatus === "failed") return "failed";
+    const pdfBytes = pdf ?? (await buildRecordPdf(record)).bytes;
+    const doc = await sendTelegramDocument({
+      name: pdfFilename(record),
+      bytes: pdfBytes,
+      mime: "application/pdf",
+      caption: `${roundHeader(record)}\n\nFull round PDF (same file as Discord / Share).`.slice(0, 1024),
+    });
+    if (doc.status === "failed") return "failed";
+    if (doc.status === "skipped" && textStatus === "skipped") return "skipped";
+    return doc.status === "ok" || textStatus === "ok" ? "ok" : doc.status;
   } catch {
     return "failed";
   }
@@ -359,9 +378,13 @@ export async function notifySubmission(record: Submission): Promise<NotifyResult
     destOn(settings, "dayNotes", "telegram", failCount);
   try {
     const sendRoundReports = destOn(settings, "roundSubmit", "discordReports", failCount);
+    const sendRoundTelegram = destOn(settings, "roundSubmit", "telegram", failCount);
     const photos =
       sendRoundReports && settings.payload.photos ? await loadRecordPhotos(record) : [];
-    const pdf = settings.payload.pdf && sendRoundReports ? (await buildRecordPdf(record)).bytes : null;
+    const pdf =
+      (settings.payload.pdf && sendRoundReports) || sendRoundTelegram
+        ? (await buildRecordPdf(record)).bytes
+        : null;
     try {
       const disc = await sendDiscord(record, pdf, photos, settings, failCount);
       result.discord = disc.status;
@@ -375,7 +398,7 @@ export async function notifySubmission(record: Submission): Promise<NotifyResult
       /* location-channel submit is extra; reports/Telegram status stay authoritative */
     }
     try {
-      result.telegram = await sendTelegram(record, settings, failCount);
+      result.telegram = await sendTelegram(record, settings, failCount, pdf);
     } catch {
       result.telegram = wantTelegram ? "failed" : "skipped";
     }
@@ -418,7 +441,7 @@ export async function sendAdminNotifyTest(
       result === "ok"
         ? "Test sent to the linked Telegram chat."
         : result === "skipped"
-          ? "Telegram is not linked yet. Send a private message to @Office3331bot, then Check for a DM."
+          ? "Telegram is not linked yet. Add @Office3331bot to the group (or send it a DM), then Check for a DM."
           : "Telegram test failed.";
     return { status: result, detail };
   }

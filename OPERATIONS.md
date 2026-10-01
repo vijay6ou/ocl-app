@@ -131,9 +131,11 @@ error. Discord failure never rolls back a saved record.
 server**. Technicians pick it up on next load.
 
 **Telegram is not posting.**
-The bot token lives in `/etc/ocl-technician-log.env`. Someone must send a private
-message to `@Office3331bot`. Then **Notifications** → **Check for a DM**. Chat id is
-stored on the plant server. Admin UI never shows the token or chat id.
+The bot token lives in `/etc/ocl-technician-log.env`. The bot must be in the
+bound chat (a group is fine). Then **Notifications** → **Check for a DM**. Chat
+id is stored on the plant server. Admin UI never shows the token or chat id.
+Round submit with the Telegram tick attaches the same plant PDF as Discord
+(`sendDocument`), not text only.
 
 **An admin wants to change what Discord or Telegram send.**
 **Notifications** (Control). Each event has its own destinations (Discord reports,

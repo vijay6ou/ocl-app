@@ -50,7 +50,7 @@ export const NOTIFY_EVENT_META: Record<
 > = {
   roundSubmit: {
     label: "Round submit",
-    hint: "Full form, faults, photos, and PDF after a successful cloud save.",
+    hint: "Full form, faults, photos, and PDF after a successful cloud save. Telegram gets the same plant PDF.",
   },
   dayNotes: {
     label: "Day notes",

@@ -13,6 +13,18 @@ export type TelegramPublicStatus = {
   lastSentAt?: string;
 };
 
+/** Safe fields from sendDocument — no token, no chat id. */
+export type TelegramDocumentResult = {
+  status: TelegramChannelStatus;
+  method: "sendDocument";
+  http?: number;
+  description?: string;
+  chatType?: string;
+  fileName?: string;
+  mime?: string;
+  bytes?: number;
+};
+
 type TelegramState = {
   chatId: string;
   botUsername: string;
@@ -177,7 +189,7 @@ export async function discoverTelegramChat(): Promise<{ chatId: string; username
       lastDiscoverAt: now,
       lastUpdatesCount: rows.length,
       lastError: updates.ok
-        ? "Waiting for a private message to @Office3331bot."
+        ? "Waiting for a message in the bound Telegram chat (group or DM)."
         : publicError(String(updates.body.description || "getUpdates failed")),
     });
     return null;
@@ -192,6 +204,59 @@ export async function discoverTelegramChat(): Promise<{ chatId: string; username
     lastError: "",
   });
   return { chatId, username };
+}
+
+async function postTelegramDocument(
+  chatId: string,
+  file: { name: string; bytes: Buffer; mime?: string; caption?: string }
+) {
+  const token = botToken();
+  if (!token) {
+    return {
+      ok: false as const,
+      status: 0,
+      body: { ok: false, description: "Bot token is not configured." } as {
+        ok?: boolean;
+        description?: string;
+        result?: unknown;
+      },
+    };
+  }
+  const form = new FormData();
+  form.append("chat_id", chatId);
+  if (file.caption?.trim()) form.append("caption", file.caption.trim().slice(0, 1024));
+  form.append(
+    "document",
+    new Blob([new Uint8Array(file.bytes)], { type: file.mime || "application/octet-stream" }),
+    file.name
+  );
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
+    method: "POST",
+    body: form,
+    headers: { "User-Agent": APP_UA },
+  });
+  let body: { ok?: boolean; description?: string; result?: unknown } = {};
+  try {
+    body = (await res.json()) as typeof body;
+  } catch {
+    body = { ok: false, description: `Telegram HTTP ${res.status}` };
+  }
+  return { ok: Boolean(body.ok), status: res.status, body };
+}
+
+function documentMeta(body: { result?: unknown }, file: { name: string; mime?: string; bytes: Buffer }) {
+  const result =
+    body.result && typeof body.result === "object" ? (body.result as Record<string, unknown>) : {};
+  const chat = result.chat && typeof result.chat === "object" ? (result.chat as Record<string, unknown>) : {};
+  const doc =
+    result.document && typeof result.document === "object"
+      ? (result.document as Record<string, unknown>)
+      : {};
+  const chatType = typeof chat.type === "string" ? chat.type : undefined;
+  const fileName = typeof doc.file_name === "string" ? doc.file_name : file.name;
+  const mime = typeof doc.mime_type === "string" ? doc.mime_type : file.mime;
+  const bytes = typeof doc.file_size === "number" ? doc.file_size : file.bytes.length;
+  return { chatType, fileName, mime, bytes };
 }
 
 export async function sendTelegramText(text: string, file?: { name: string; bytes: Buffer }): Promise<TelegramChannelStatus> {
@@ -214,24 +279,16 @@ export async function sendTelegramText(text: string, file?: { name: string; byte
     }
   }
   if (file) {
-    const token = botToken();
-    const form = new FormData();
-    form.append("chat_id", found.chatId);
-    form.append(
-      "document",
-      new Blob([new Uint8Array(file.bytes)], { type: "text/plain; charset=utf-8" }),
-      file.name
-    );
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
-      method: "POST",
-      body: form,
-      headers: { "User-Agent": APP_UA },
+    const sent = await postTelegramDocument(found.chatId, {
+      name: file.name,
+      bytes: file.bytes,
+      mime: "text/plain; charset=utf-8",
     });
-    if (!res.ok) {
+    if (!sent.ok) {
       const state = await readState();
       await writeState({
         ...state,
-        lastError: publicError(`Telegram file HTTP ${res.status}`),
+        lastError: publicError(String(sent.body.description || `Telegram file HTTP ${sent.status}`)),
       });
       return "failed";
     }
@@ -244,6 +301,53 @@ export async function sendTelegramText(text: string, file?: { name: string; byte
     lastSentAt: now,
   });
   return "ok";
+}
+
+/** sendDocument to the bound chat (group or DM). Never logs the token or chat id. */
+export async function sendTelegramDocument(file: {
+  name: string;
+  bytes: Buffer;
+  mime?: string;
+  caption?: string;
+}): Promise<TelegramDocumentResult> {
+  const result: TelegramDocumentResult = {
+    status: "skipped",
+    method: "sendDocument",
+    fileName: file.name,
+    mime: file.mime,
+    bytes: file.bytes.length,
+  };
+  if (!botToken()) return result;
+  const found = await discoverTelegramChat();
+  if (!found) {
+    const state = await readState();
+    result.status = botToken() ? "failed" : "skipped";
+    result.description = publicError(state.lastError || "Telegram chat is not bound.");
+    return result;
+  }
+  const sent = await postTelegramDocument(found.chatId, file);
+  result.http = sent.status;
+  const meta = documentMeta(sent.body, file);
+  result.chatType = meta.chatType;
+  result.fileName = meta.fileName;
+  result.mime = meta.mime;
+  result.bytes = meta.bytes;
+  if (!sent.ok) {
+    result.status = "failed";
+    result.description = publicError(String(sent.body.description || `Telegram HTTP ${sent.status}`));
+    const state = await readState();
+    await writeState({ ...state, lastError: result.description });
+    return result;
+  }
+  result.status = "ok";
+  result.description = "ok";
+  const state = await readState();
+  await writeState({
+    ...state,
+    lastError: "",
+    lastSentAt: new Date().toISOString(),
+  });
+  return result;
 }
 
 function splitTelegram(text: string) {

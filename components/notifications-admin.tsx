@@ -241,7 +241,7 @@ export function NotificationsAdmin() {
           <p className="text-sm text-muted-foreground">
             Discord reports {channels?.discordReports.configured ? "is configured" : "is not configured"}.
             Discord location {channels?.discordLocation.configured ? "is configured" : "is not configured"}.
-            Telegram {telegram?.linked ? "is bound" : "is waiting for a DM"}.
+            Telegram {telegram?.linked ? "is bound" : "is waiting for a group or DM"}.
           </p>
 
           <div className="overflow-x-auto rounded-xl border" data-notify-matrix>
