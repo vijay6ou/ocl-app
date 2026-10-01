@@ -52,6 +52,23 @@ final class PdfShareHelper {
         });
     }
 
+    static void offerFile(Activity activity, File pdf, String jobName) {
+        final String name = (jobName == null || jobName.trim().isEmpty())
+                ? "Adani Cements Maintenance Report"
+                : jobName.trim();
+        if (pdf == null || !pdf.isFile() || pdf.length() == 0) {
+            Toast.makeText(activity, R.string.pdf_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(activity)
+                .setTitle(R.string.share_pdf_title)
+                .setMessage(R.string.share_pdf_message)
+                .setPositiveButton(R.string.share_report, (d, w) -> sharePdf(activity, pdf, name))
+                .setNeutralButton(R.string.print_save, (d, w) -> PrintHelper.printPdf(activity, pdf, name))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     static void sharePdf(Activity activity, File pdf, String jobName) {
         if (pdf == null || !pdf.isFile() || pdf.length() == 0) {
             Toast.makeText(activity, R.string.pdf_failed, Toast.LENGTH_SHORT).show();

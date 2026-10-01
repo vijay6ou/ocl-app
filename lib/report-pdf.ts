@@ -148,17 +148,13 @@ export async function buildSubmissionPdf(record: Submission, photos: PdfPhoto[])
     });
   }
 
-  if (record.dayNotes?.trim() || record.dayPhotos?.length) {
-    line(c, "Day notes", { size: 12, bold: true, gap: 4 });
-    if (record.dayNotes?.trim()) {
-      line(c, record.dayNotes.trim(), { size: 10, gap: 4 });
-    }
-    const dayShots = (record.dayPhotos ?? [])
-      .map((p) => photoById.get(p.id))
-      .filter((p): p is PdfPhoto => Boolean(p));
-    await drawPhotos(c, dayShots);
-    c.y -= 4;
-  }
+  line(c, "Day notes", { size: 12, bold: true, gap: 4 });
+  line(c, record.dayNotes?.trim() || "(none)", { size: 10, gap: 4 });
+  const dayShots = (record.dayPhotos ?? [])
+    .map((p) => photoById.get(p.id))
+    .filter((p): p is PdfPhoto => Boolean(p));
+  await drawPhotos(c, dayShots);
+  c.y -= 4;
 
   line(c, "Equipment", { size: 13, bold: true, gap: 6 });
 
@@ -166,6 +162,7 @@ export async function buildSubmissionPdf(record: Submission, photos: PdfPhoto[])
     const st = record.equip[item.id];
     const status =
       st?.status === "R" ? "RUNNING" : st?.status === "S" ? "STOPPED" : "PENDING";
+    const stopped = st?.status === "S";
     ensure(c, 48);
     c.page.drawRectangle({
       x: MARGIN,
@@ -180,9 +177,9 @@ export async function buildSubmissionPdf(record: Submission, photos: PdfPhoto[])
       gap: 4,
     });
 
-    if (st?.status === "R" && item.runningParams.length > 0) {
+    if (!stopped && item.runningParams.length > 0) {
       for (const p of item.runningParams) {
-        const v = st.params[p.id] ?? {};
+        const v = st?.params[p.id] ?? {};
         const shown = p.phases
           ? `R ${v.r || "-"} / Y ${v.y || "-"} / B ${v.b || "-"}`
           : v.v || "-";
@@ -193,9 +190,9 @@ export async function buildSubmissionPdf(record: Submission, photos: PdfPhoto[])
       c.y -= 4;
     }
 
-    const checks = st?.status === "S" ? item.stoppedChecks : item.runningChecks;
-    const answers = st?.status === "S" ? st.stoppedChecks : st?.checks;
-    if (st?.status && checks.length > 0) {
+    const checks = stopped ? item.stoppedChecks : item.runningChecks;
+    const answers = stopped ? st?.stoppedChecks : st?.checks;
+    if (checks.length > 0) {
       for (let i = 0; i < checks.length; i += 1) {
         const ans = answers?.[String(i)];
         const mark = ans === "ok" ? "OK" : ans === "fail" ? "FAIL" : "-";

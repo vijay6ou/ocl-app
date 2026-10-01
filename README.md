@@ -41,7 +41,7 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**). Each photo is filed under that machine’s **equipment ID** in Files (plant → section → area → equipment ID).
 4. On **Summary**, write a short day note and attach photos if needed, then submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord and Telegram follow the **Notifications** matrix (defaults: Discord reports + Telegram for the round; Telegram only for day notes). Catalogue and draft saves never notify.
 5. Open **Files** to browse the same plant tree and open a motor’s album (keyed by equipment ID). Round photos are already there. You can also add a nameplate or defect shot, or a **text note / log / pasted plant data**, from the rear camera, gallery, or the note box — all in that machine’s folder.
-6. Print / share PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos and the day note). On the technician APK, Print / share PDF writes the PDF then offers the Android share sheet (WhatsApp, Drive, Gmail) or print / save. Discord and Telegram follow the ticks on **Notifications**.
+6. Print / share PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos and the day note). On the technician APK and in the browser this downloads the same plant PDF that Discord attaches — every machine, reading, OK/FAIL, remark, photo, day note, and submit time. Discord and Telegram follow the ticks on **Notifications**.
 7. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
 
 ### Admin: plant tree, blocks, and access
@@ -65,9 +65,9 @@ Existing OCL equipment ids and tags stay unless you expand **Advanced** and chan
 
 ## Technician Android APK
 
-Portrait WebView `com.ocl.maintenance` **1.16.0** (versionCode **18**). The APK does not show the plant server in the UI. There is no first-run “enter plant server” screen. Leftover builder/LAN URLs (`172.30.0.2`, `127.0.0.1`, `192.168.x`, port `43127`) are ignored.
+Portrait WebView `com.ocl.maintenance` **1.17.0** (versionCode **19**). The APK does not show the plant server in the UI. There is no first-run “enter plant server” screen. Leftover builder/LAN URLs (`172.30.0.2`, `127.0.0.1`, `192.168.x`, port `43127`) are ignored.
 
-Default shift is **General (09:00–18:00)**. Equipment is logged as compact interactive cards. Photos sit at the end of each machine. Half-filled rounds auto-save. The in-app **Update** tab shows **Plant server** version codes only. **Print / share PDF** on the APK opens Share (system sheet) or print / save.
+Default shift is **General (09:00–18:00)**. Equipment is logged as compact interactive cards. Photos sit at the end of each machine. Half-filled rounds auto-save. The in-app **Update** tab shows **Plant server** version codes only. **Print / share PDF** on the APK fetches the plant-server PDF (same file Discord gets) then opens Share (system sheet) or print / save.
 
 If the plant server is down the app shows **Cannot reach plant server** and **Retry**. Long-press the title to reveal an admin-only server field (empty hint — not a host).
 

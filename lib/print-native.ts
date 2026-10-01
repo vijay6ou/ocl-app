@@ -1,6 +1,7 @@
 export type OclNative = {
   available: () => boolean;
   printHtml: (html: string, jobName?: string) => void;
+  shareRecordPdf?: (recordId: string) => void;
   appVersionName?: () => string;
   appVersionCode?: () => number;
   checkUpdate?: () => void;
@@ -168,7 +169,11 @@ const PRINT_CSS = `
   .report-banner { display: block !important; border-bottom: 1px solid #ccc; padding-bottom: 8pt; margin-bottom: 10pt; }
 `;
 
-export function printReport() {
+export function printReport(recordId?: string) {
+  if (isOclNative() && recordId && window.OCLNative?.shareRecordPdf) {
+    window.OCLNative.shareRecordPdf(recordId);
+    return;
+  }
   if (isOclNative() && window.OCLNative?.printHtml) {
     const report = document.querySelector(".report");
     const body = report ? report.outerHTML : document.body.innerHTML;
@@ -176,5 +181,33 @@ export function printReport() {
     window.OCLNative.printHtml(html, "Adani Cements Maintenance Report");
     return;
   }
+  if (recordId) {
+    void downloadRecordPdf(recordId);
+    return;
+  }
   window.print();
+}
+
+async function downloadRecordPdf(recordId: string) {
+  try {
+    const res = await fetch(`/api/submissions/${encodeURIComponent(recordId)}/pdf`, {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("PDF failed");
+    const blob = await res.blob();
+    const disp = res.headers.get("Content-Disposition") || "";
+    const match = /filename="?([^";]+)"?/i.exec(disp);
+    const name = match?.[1] || "Adani-Cements-report.pdf";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch {
+    window.print();
+  }
 }

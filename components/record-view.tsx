@@ -69,7 +69,7 @@ export function RecordView({ id, initial }: { id: string; initial?: Submission }
           <Badge variant={record.status === "COMPLETE" ? "secondary" : "outline"}>
             {record.status}
           </Badge>
-          <Button variant="outline" onClick={() => printReport()}>
+          <Button variant="outline" onClick={() => printReport(record.id)}>
             Print / share PDF
           </Button>
           {user?.role === "admin" ? (

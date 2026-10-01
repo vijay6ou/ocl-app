@@ -25,7 +25,7 @@ type TelegramState = {
 
 const STATE_FILE = path.join(process.cwd(), "data", "telegram.json");
 const BOT_USERNAME = "Office3331bot";
-const APP_UA = "OCLMaintenance/1.16.0";
+const APP_UA = "OCLMaintenance/1.17.0";
 
 function botToken() {
   return (process.env.TELEGRAM_BOT_TOKEN ?? "").trim();

@@ -81,25 +81,23 @@ export function PrintReport({ record }: { record: Submission }) {
         <p className="text-emerald-800">No FAIL checks or defect remarks were recorded.</p>
       )}
 
-      {record.dayNotes?.trim() || record.dayPhotos?.length ? (
-        <section>
-          <h3 className="mb-2 font-heading font-semibold">Day notes</h3>
-          {record.dayNotes?.trim() ? <p className="whitespace-pre-wrap">{record.dayNotes}</p> : null}
-          {record.dayPhotos?.length ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {record.dayPhotos.map((p) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={p.id}
-                  src={`/api/photos/${p.id}`}
-                  alt="Day note"
-                  className="h-24 rounded border object-cover"
-                />
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+      <section>
+        <h3 className="mb-2 font-heading font-semibold">Day notes</h3>
+        <p className="whitespace-pre-wrap">{record.dayNotes?.trim() || "(none)"}</p>
+        {record.dayPhotos?.length ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {record.dayPhotos.map((p) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={p.id}
+                src={`/api/photos/${p.id}`}
+                alt="Day note"
+                className="h-24 rounded border object-cover"
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
 
       <section className="space-y-4">
         <h3 className="font-heading font-semibold">Equipment</h3>
@@ -107,8 +105,9 @@ export function PrintReport({ record }: { record: Submission }) {
           const st = record.equip[item.id];
           const status =
             st?.status === "R" ? "RUNNING" : st?.status === "S" ? "STOPPED" : "PENDING";
-          const checks = st?.status === "S" ? item.stoppedChecks : item.runningChecks;
-          const answers = st?.status === "S" ? st.stoppedChecks : st?.checks;
+          const stopped = st?.status === "S";
+          const checks = stopped ? item.stoppedChecks : item.runningChecks;
+          const answers = stopped ? st?.stoppedChecks : st?.checks;
           return (
             <div key={item.id} className="break-inside-avoid rounded-lg border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -119,11 +118,11 @@ export function PrintReport({ record }: { record: Submission }) {
                 </div>
                 <Badge variant="outline">{status}</Badge>
               </div>
-              {st?.status === "R" && item.runningParams.length > 0 ? (
+              {!stopped && item.runningParams.length > 0 ? (
                 <table className="mt-2 w-full text-xs">
                   <tbody>
                     {item.runningParams.map((p) => {
-                      const v = st.params[p.id] ?? {};
+                      const v = st?.params[p.id] ?? {};
                       const shown = p.phases
                         ? `R ${v.r || "—"} / Y ${v.y || "—"} / B ${v.b || "—"}`
                         : v.v || "—";
@@ -141,7 +140,7 @@ export function PrintReport({ record }: { record: Submission }) {
                   </tbody>
                 </table>
               ) : null}
-              {st?.status && checks.length > 0 ? (
+              {checks.length > 0 ? (
                 <ul className="mt-2 space-y-1 text-xs">
                   {checks.map((c, i) => {
                     const ans = answers?.[String(i)];
@@ -194,6 +193,19 @@ export function PrintReport({ record }: { record: Submission }) {
                       {ans}
                       {st?.remarks ? ` · ${st.remarks}` : ""}
                     </span>
+                    {st?.photos?.length ? (
+                      <span className="flex w-full flex-wrap gap-2">
+                        {st.photos.map((p) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={p.id}
+                            src={`/api/photos/${p.id}`}
+                            alt="Device"
+                            className="h-24 rounded border object-cover"
+                          />
+                        ))}
+                      </span>
+                    ) : null}
                   </li>
                 );
               })}

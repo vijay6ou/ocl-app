@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -334,6 +335,104 @@ public class MainActivity extends Activity {
         });
     }
 
+    void shareRecordPdf(final String recordId) {
+        if (recordId == null || recordId.trim().isEmpty()) {
+            runOnUiThread(() ->
+                    Toast.makeText(this, R.string.pdf_failed, Toast.LENGTH_SHORT).show());
+            return;
+        }
+        runOnUiThread(() -> {
+            final String origin = getServerUrl();
+            if (origin.isEmpty() || usingLocalUi) {
+                Toast.makeText(this, R.string.pdf_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            CookieManager.getInstance().flush();
+            String cookie = CookieManager.getInstance().getCookie(origin);
+            if (cookie == null || cookie.isEmpty()) {
+                cookie = CookieManager.getInstance().getCookie(origin + "/");
+            }
+            if ((cookie == null || cookie.isEmpty()) && webView.getUrl() != null) {
+                cookie = CookieManager.getInstance().getCookie(webView.getUrl());
+            }
+            final String cookieHeader = cookie == null ? "" : cookie;
+            final String id = recordId.trim();
+            final ProgressDialog wait = ProgressDialog.show(
+                    this, null, getString(R.string.pdf_preparing), true, false);
+            new Thread(() -> {
+                File pdf = downloadRecordPdf(origin, id, cookieHeader);
+                mainHandler.post(() -> {
+                    dismissQuietly(wait);
+                    if (pdf != null) {
+                        PdfShareHelper.offerFile(MainActivity.this, pdf, pdf.getName().replace(".pdf", ""));
+                    } else {
+                        Toast.makeText(MainActivity.this, R.string.pdf_failed, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }).start();
+        });
+    }
+
+    private File downloadRecordPdf(String origin, String recordId, String cookieHeader) {
+        HttpURLConnection conn = null;
+        try {
+            String pathId = Uri.encode(recordId);
+            URL url = new URL(origin + "/api/submissions/" + pathId + "/pdf");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setInstanceFollowRedirects(true);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(90000);
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/pdf");
+            if (cookieHeader != null && !cookieHeader.isEmpty()) {
+                conn.setRequestProperty("Cookie", cookieHeader);
+            }
+            int code = conn.getResponseCode();
+            if (code != HttpURLConnection.HTTP_OK) return null;
+            String name = filenameFromDisposition(conn.getHeaderField("Content-Disposition"));
+            File dir = new File(getCacheDir(), "share");
+            if (!dir.isDirectory() && !dir.mkdirs()) return null;
+            File out = new File(dir, name);
+            try (InputStream in = conn.getInputStream();
+                 FileOutputStream fos = new FileOutputStream(out)) {
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) >= 0) fos.write(buf, 0, n);
+            }
+            if (!out.isFile() || out.length() == 0) return null;
+            return out;
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static String filenameFromDisposition(String header) {
+        if (header != null) {
+            java.util.regex.Matcher quoted =
+                    java.util.regex.Pattern.compile("filename=\"([^\"]+)\"").matcher(header);
+            if (quoted.find()) {
+                return PdfShareHelper.fileName(quoted.group(1).replaceAll("\\.pdf$", ""));
+            }
+            java.util.regex.Matcher plain =
+                    java.util.regex.Pattern.compile("filename=([^;]+)").matcher(header);
+            if (plain.find()) {
+                return PdfShareHelper.fileName(plain.group(1).trim().replaceAll("\\.pdf$", ""));
+            }
+        }
+        return "Adani-Cements-report.pdf";
+    }
+
+    private static void dismissQuietly(ProgressDialog wait) {
+        if (wait == null) return;
+        try {
+            if (wait.isShowing()) wait.dismiss();
+        } catch (Exception ignored) {
+            /* activity may have gone */
+        }
+    }
+
     private void openFileChooser(ValueCallback<Uri[]> callback, boolean capture) {
         if (filePathCallback != null) {
             filePathCallback.onReceiveValue(null);
@@ -631,6 +730,11 @@ public class MainActivity extends Activity {
                     ? "Adani Cements Maintenance Report"
                     : jobName;
             MainActivity.this.printHtml(html, name);
+        }
+
+        @JavascriptInterface
+        public void shareRecordPdf(String recordId) {
+            MainActivity.this.shareRecordPdf(recordId);
         }
 
         @JavascriptInterface

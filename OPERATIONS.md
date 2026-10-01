@@ -144,8 +144,11 @@ Catalogue and draft saves never notify. Defaults: submit → Discord reports +
 Telegram; day notes → Telegram only; location → Discord location only.
 
 **The APK must be rebuilt.**
-Plant app is **1.16.0** (versionCode 18). Build with `./gradlew :app:publishToPlantServer`
-from `android/` after installing SDK 34. Print / share PDF uses `ACTION_SEND` + FileProvider.
+Plant app is **1.17.0** (versionCode 19). Build with `./gradlew :app:publishToPlantServer`
+from `android/` after installing SDK 34. Print / share PDF downloads the same
+pdf-lib report that Discord attaches (`GET /api/submissions/{id}/pdf`), then
+uses `ACTION_SEND` + FileProvider or PrintManager on that file. Do not rasterize
+the WebView — that path only painted the first screen of the round.
 
 **Location check-ins.**
 Technicians (and any signed-in session) post lat/lng every 15 minutes to

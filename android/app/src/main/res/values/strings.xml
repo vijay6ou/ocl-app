@@ -22,8 +22,8 @@
     <string name="share_pdf_title">Report PDF</string>
     <string name="share_pdf_message">Share this PDF with WhatsApp, Drive, Gmail, or another app, or print / save it on this phone.</string>
     <string name="share_pdf_none">No app on this phone accepts a PDF share.</string>
-    <string name="pdf_failed">Could not build the PDF. Print / save is still available.</string>
-    <string name="pdf_preparing">Preparing PDF…</string>
+    <string name="pdf_failed">Could not fetch the plant PDF. Check the connection and try again.</string>
+    <string name="pdf_preparing">Fetching full report PDF…</string>
     <string name="capture_photo">Capture</string>
     <string name="camera_rear">Rear camera — equipment photo</string>
     <string name="camera_front">Front camera — selfie</string>

@@ -56,17 +56,26 @@ export function formatFullRound(
   }
   lines.push("");
 
+  if (includeDayNotes) {
+    lines.push("Day notes");
+    lines.push("─────────");
+    lines.push(record.dayNotes?.trim() || "(none)");
+    if (record.dayPhotos?.length) lines.push(`${record.dayPhotos.length} photo(s) attached`);
+    lines.push("");
+  }
+
   lines.push("Equipment");
   lines.push("─────────");
   for (const item of record.snapshot.equip) {
     const st = record.equip[item.id];
+    const stopped = st?.status === "S";
     lines.push("");
     lines.push(
       `${item.tag}${item.isHT ? "  HT" : ""}  ${item.name}  [${statusLabel(st?.status)}]`
     );
-    if (st?.status === "R" && item.runningParams.length > 0) {
+    if (!stopped && item.runningParams.length > 0) {
       for (const param of item.runningParams) {
-        const v = st.params[param.id] ?? {};
+        const v = st?.params[param.id] ?? {};
         const shown = param.phases
           ? `R ${v.r || "—"} / Y ${v.y || "—"} / B ${v.b || "—"}`
           : v.v || "—";
@@ -75,9 +84,9 @@ export function formatFullRound(
         lines.push(`  ${param.label}${unit}: ${shown}${limit}`);
       }
     }
-    const checks = st?.status === "S" ? item.stoppedChecks : item.runningChecks;
-    const answers = st?.status === "S" ? st.stoppedChecks : st?.checks;
-    if (st?.status && checks.length > 0) {
+    const checks = stopped ? item.stoppedChecks : item.runningChecks;
+    const answers = stopped ? st?.stoppedChecks : st?.checks;
+    if (checks.length > 0) {
       for (let i = 0; i < checks.length; i += 1) {
         lines.push(`  ${yn(answers?.[String(i)])} · ${checks[i]}`);
       }
@@ -102,14 +111,6 @@ export function formatFullRound(
     }
   }
 
-  if (includeDayNotes) {
-    lines.push("");
-    lines.push("Day notes");
-    lines.push("─────────");
-    if (record.dayNotes?.trim()) lines.push(record.dayNotes.trim());
-    else lines.push("(none)");
-    if (record.dayPhotos?.length) lines.push(`${record.dayPhotos.length} photo(s) attached`);
-  }
   lines.push("");
   lines.push(
     record.selfie

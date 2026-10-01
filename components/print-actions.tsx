@@ -13,7 +13,7 @@ export function PrintActions({ record }: { record: Submission }) {
         <Button variant="outline" render={<Link href={`/history/${record.id}`} />}>
           Back to record
         </Button>
-        <Button onClick={() => printReport()}>Print / share PDF</Button>
+        <Button onClick={() => printReport(record.id)}>Print / share PDF</Button>
       </div>
       <PrintReport record={record} />
     </>
