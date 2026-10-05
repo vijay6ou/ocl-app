@@ -20,8 +20,10 @@ import {
   formatDayNotes,
   formatFaultsOnly,
   formatFullRound,
+  formatRoundSummary,
   roundHeader,
 } from "@/lib/round-text";
+import { workingSectionLabel } from "@/lib/working-section";
 import { sanitizePublicText } from "@/lib/public-text";
 import type { Submission } from "@/lib/types";
 import { sendTelegramDocument, sendTelegramText, type TelegramChannelStatus } from "@/lib/telegram";
@@ -282,32 +284,19 @@ async function sendTelegram(
   const sendNotes = destOn(settings, "dayNotes", "telegram", failCount);
   if (!sendRound && !sendNotes) return "skipped";
   try {
-    if (!sendRound) return await sendTelegramText(formatDayNotes(record).slice(0, 3900));
-    const full = formatFullRound(record, { includeDayNotes: sendNotes });
-    const header = sendNotes ? formatDayNotes(record) : roundHeader(record);
-    let textStatus: TelegramChannelStatus = "skipped";
-    if (settings.payload.fullForm) {
-      textStatus =
-        full.length <= 3900
-          ? await sendTelegramText(full)
-          : await sendTelegramText(header.slice(0, 3900), {
-              name: fullFormFilename(record),
-              bytes: Buffer.from(full, "utf8"),
-            });
-    } else if (sendNotes) {
-      textStatus = await sendTelegramText(header.slice(0, 3900));
-    } else {
-      textStatus = await sendTelegramText(
-        `${roundHeader(record)}\n\nRound saved on the plant server.`.slice(0, 3900)
-      );
-    }
+    const summary = sendRound
+      ? formatRoundSummary(record)
+      : formatDayNotes(record);
+    const textStatus = await sendTelegramText(summary);
+    if (!sendRound) return textStatus;
     if (textStatus === "failed") return "failed";
     const pdfBytes = pdf ?? (await buildRecordPdf(record)).bytes;
+    const section = workingSectionLabel(record.meta);
     const doc = await sendTelegramDocument({
       name: pdfFilename(record),
       bytes: pdfBytes,
       mime: "application/pdf",
-      caption: `${roundHeader(record)}\n\nFull round PDF (same file as Discord / Share).`.slice(0, 1024),
+      caption: `${section} · ${record.meta.date}`.slice(0, 1024),
     });
     if (doc.status === "failed") return "failed";
     if (doc.status === "skipped" && textStatus === "skipped") return "skipped";

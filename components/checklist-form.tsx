@@ -15,7 +15,7 @@ import { PhotoCapture } from "@/components/photo-capture";
 import { OkFailToggle, RunStopToggle } from "@/components/toggles";
 import { ErrorState, LoadingState } from "@/components/states";
 import { UpdatePanel } from "@/components/update-panel";
-import { SubmitGate } from "@/components/submit-gate";
+import { SubmitGate, type SubmitAuth } from "@/components/submit-gate";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
 import {
@@ -238,7 +238,7 @@ export function ChecklistForm({
     }));
   }
 
-  async function submit(gate: { selfieId: string; pin: string }) {
+  async function submit(gate: SubmitAuth) {
     if (!dayKey) return;
     if (!date || !shift) {
       toast.error("Date and shift are required before this round can be archived.");
@@ -260,8 +260,8 @@ export function ChecklistForm({
           common,
           dayNotes,
           dayPhotos,
-          selfieId: gate.selfieId,
-          pin: gate.pin,
+          selfieId: gate.selfieId || undefined,
+          pin: gate.pin || undefined,
         }),
       });
       if (user) {

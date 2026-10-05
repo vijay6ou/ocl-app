@@ -134,14 +134,16 @@ server**. Technicians pick it up on next load.
 The bot token lives in `/etc/ocl-technician-log.env`. The bot must be in the
 bound chat (a group is fine). Then **Notifications** → **Check for a DM**. Chat
 id is stored on the plant server. Admin UI never shows the token or chat id.
-Round submit with the Telegram tick attaches the same plant PDF as Discord
-(`sendDocument`), not text only.
+Round submit with the Telegram tick sends a comments summary (`sendMessage`:
+day notes, written remarks, and FAIL comments) and the same plant PDF as
+Discord (`sendDocument`). It does not attach a second copy of the full form.
 
 **An admin wants to change what Discord or Telegram send.**
 **Notifications** (Control). Each event has its own destinations (Discord reports,
-Discord location, Telegram). Ticks for full form / faults / photos / PDF /
+Discord location, Telegram). Discord ticks for full form / faults / photos / PDF /
 satellite / coords / name / time, and when (immediate submit, 15-minute
-location, only if faults per event). Save, then the next event uses the matrix.
+location, only if faults per event). Telegram round submit is always the
+comments summary plus PDF. Save, then the next event uses the matrix.
 Catalogue and draft saves never notify. Defaults: submit → Discord reports +
 Telegram; day notes → Telegram only; location → Discord location only.
 

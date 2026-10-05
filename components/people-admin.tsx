@@ -90,8 +90,8 @@ export function PeopleAdmin() {
       <div>
         <h1 className="font-heading text-2xl font-semibold">People</h1>
         <p className="text-sm text-muted-foreground">
-          One account per person. The name on the account is printed on every report. Each person
-          needs a 4-digit PIN to submit a round.
+          One account per person. The name on the account is printed on every report. Each
+          person can confirm a round with a front-camera selfie or a 4-digit PIN.
         </p>
       </div>
 
@@ -146,7 +146,7 @@ export function PeopleAdmin() {
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 required
-                placeholder="Required for submit"
+                placeholder="For PIN confirm on submit"
               />
             </div>
             <div className="sm:col-span-2">

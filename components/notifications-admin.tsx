@@ -318,6 +318,10 @@ export function NotificationsAdmin() {
           <CardTitle>Round submit payload</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2">
+          <p className="text-sm text-muted-foreground sm:col-span-2">
+            These ticks apply to Discord reports. Telegram always posts one summary (written
+            comments and faults) plus the full plant PDF — not a second copy of the form.
+          </p>
           <Tick
             checked={settings.payload.fullForm}
             onChange={(v) => patchPayload("fullForm", v)}

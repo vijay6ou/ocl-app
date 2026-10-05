@@ -50,11 +50,11 @@ export const NOTIFY_EVENT_META: Record<
 > = {
   roundSubmit: {
     label: "Round submit",
-    hint: "Full form, faults, photos, and PDF after a successful cloud save. Telegram gets the same plant PDF.",
+    hint: "Discord gets the full form, faults, photos, and PDF. Telegram gets one comments summary plus the plant PDF — not a second copy of the full round.",
   },
   dayNotes: {
     label: "Day notes",
-    hint: "Summary day notes from that submit. Independent of the full form.",
+    hint: "Written day notes in that submit. Telegram already includes them in the round summary when round submit is ticked.",
   },
   locationCheckIn: {
     label: "Location check-in",

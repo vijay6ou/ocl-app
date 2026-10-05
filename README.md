@@ -2,7 +2,7 @@
 
 Cloud-backed technician log for **Adani Cements, Electrical Department, Chittapur**. The plant is a tree: **plant → section → area**. The first plant is Adani Cements Chittapur. Material handling is a section with areas Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher. Admins add empty plants, sections, and areas when needed. A technician only sees the locations they are assigned. The server file store is the source of truth for the equipment catalogue, people, submissions, and defect photos.
 
-The technician APK opens the plant server only. Admins publish the live catalogue from a Forms-style builder. After a successful submit the plant server posts Discord and Telegram according to the **Notifications** routing matrix (defaults: four Discord report messages plus Telegram with the same full-round PDF; day notes Telegram only; location on the Discord location channel). Catalogue and draft saves never notify.
+The technician APK opens the plant server only. Admins publish the live catalogue from a Forms-style builder. After a successful submit the plant server posts Discord and Telegram according to the **Notifications** routing matrix (defaults: four Discord report messages; Telegram gets a comments summary plus the plant PDF, not a second copy of the full form; location on the Discord location channel). Catalogue and draft saves never notify.
 
 The app UI never shows the server address, Discord webhook, or env paths. User-visible branding is **Adani Cements**. Existing OCL equipment ids and tags stay in the catalogue.
 
@@ -39,9 +39,9 @@ Do not reuse APK default password hashes. These accounts are created on first bo
 1. Sign in with a personal account.
 2. Open an area from the plant tree. You only see plants, sections, and areas assigned to you. Material handling currently has Additive, Bauxite, Gypsum, LC-8 / Tippler, Coal reclaimers, and Coal crusher.
 3. Enter shift, mark equipment RUNNING or STOPPED, fill readings, OK/FAIL checks, remarks, and equipment photos (**rear camera or gallery**). Each photo is filed under that machine’s **equipment ID** in Files (plant → section → area → equipment ID).
-4. On **Summary**, write a short day note and attach photos if needed, then submit — mandatory **front-camera selfie** (no gallery) then **4-digit PIN**. The round is archived on the server first, then Discord and Telegram follow the **Notifications** matrix (defaults: Discord reports + Telegram for the round, including the same plant PDF; Telegram only for day notes). Catalogue and draft saves never notify.
+4. On **Summary**, write a short day note and attach photos if needed, then submit — confirm with **either** a **front-camera selfie** (no gallery) **or** the **4-digit PIN**, not both. The round is archived on the server first, then Discord and Telegram follow the **Notifications** matrix (defaults: Discord reports + Telegram for the round). Telegram gets a written/fault comments summary plus the plant PDF. Catalogue and draft saves never notify.
 5. Open **Files** to browse the same plant tree and open a motor’s album (keyed by equipment ID). Round photos are already there. You can also add a nameplate or defect shot, or a **text note / log / pasted plant data**, from the rear camera, gallery, or the note box — all in that machine’s folder.
-6. Print / share PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos and the day note). On the technician APK and in the browser this downloads the same plant PDF that Discord attaches — every machine, reading, OK/FAIL, remark, photo, day note, and submit time. Discord and Telegram follow the ticks on **Notifications**.
+6. Print / share PDF (date, submit timestamp, working section, e.g. Monday – Additive Section, plus the full round with upright photos and the day note). On the technician APK and in the browser this downloads the same plant PDF that Discord attaches — every machine, reading, OK/FAIL, remark, photo, day note, and submit time. Discord follows the ticks on **Notifications**. Telegram always sends that PDF plus a comments summary.
 7. Search and reprint history from the cloud archive — last **30 days** of saved records for your assigned areas (admin sees the whole plant). Older weekday logs still appear, labelled Additive, Gypsum, and so on.
 
 ### Admin: plant tree, blocks, and access
@@ -71,7 +71,7 @@ Default shift is **General (09:00–18:00)**. Equipment is logged as compact int
 
 If the plant server is down the app shows **Cannot reach plant server** and **Retry**. Long-press the title to reveal an admin-only server field (empty hint — not a host).
 
-Equipment **Rear camera** opens the in-app Camera2 activity on `LENS_FACING_BACK` via `OCLNative.capturePhoto("environment")`. **Gallery** is an `<input type="file" accept="image/*">` with no `capture` attribute (system image picker). The submit selfie uses `LENS_FACING_FRONT` only — no gallery on that gate. The equipment chevron is the only expand/collapse control. Signed-in technicians send one location ping per 15-minute slot while the app is open (coordinates always; Esri World Imagery snapshot attached when the free fetch works). The phone takes a single short fix and then releases GPS — no background notification and no permission popup. Admin **Presence** sets the duty window (default **08:00–20:00 IST**). Outside that window the phone does not record a point and Presence hides the map. The Forms builder **Add equipment block** / **Add field** buttons at the top of a list insert at the start.
+Equipment **Rear camera** opens the in-app Camera2 activity on `LENS_FACING_BACK` via `OCLNative.capturePhoto("environment")`. **Gallery** is an `<input type="file" accept="image/*">` with no `capture` attribute (system image picker). The submit selfie (when chosen instead of PIN) uses `LENS_FACING_FRONT` only — no gallery on that gate. The equipment chevron is the only expand/collapse control. Signed-in technicians send one location ping per 15-minute slot while the app is open (coordinates always; Esri World Imagery snapshot attached when the free fetch works). The phone takes a single short fix and then releases GPS — no background notification and no permission popup. Admin **Presence** sets the duty window (default **08:00–20:00 IST**). Outside that window the phone does not record a point and Presence hides the map. The Forms builder **Add equipment block** / **Add field** buttons at the top of a list insert at the start.
 
 Admin **Presence** shows who is on the app now, sign-in / last seen, and time spent today. Admin **Notifications** is the Discord / Telegram control centre. Admin **Storage** shows plant `data/` disk use and can delete saved records between two dates. Photos already filed in an equipment album are kept. Catalogue and people are not deleted.
 
@@ -114,8 +114,10 @@ On submit Discord (same-date forum thread) gets:
 
 1. Full form (same layout as the in-app record, including the exact submit timestamp)
 2. Faults / wrong items only
-3. Photos (including the submit selfie), upright
+3. Photos (including the submit selfie when one was taken), upright
 4. PDF
+
+Telegram (when ticked on round submit) gets **one** comments summary — day notes, written remarks, and FAIL comments — plus the **same plant PDF**. It does not send the full form a second time.
 
 ## Data
 

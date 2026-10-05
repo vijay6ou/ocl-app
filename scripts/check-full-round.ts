@@ -1,4 +1,4 @@
-import { formatFullRound } from "@/lib/round-text";
+import { formatFullRound, formatRoundSummary } from "@/lib/round-text";
 import { buildSubmissionPdf } from "@/lib/report-pdf";
 import type { Submission } from "@/lib/types";
 
@@ -24,9 +24,29 @@ const record: Submission = {
     done: 0,
     total: 1,
   },
-  equip: {},
+  equip: {
+    m1: {
+      status: "R",
+      params: { v: { v: "415" } },
+      checks: { "0": "fail" },
+      stoppedChecks: {},
+      remarks: "Greasing pending at coupling",
+      photos: [],
+    },
+  },
   common: {},
-  fails: [],
+  fails: [
+    {
+      equipment: "RCL-CR1-TRV Travel Drive Motor",
+      issue: "Motor noise & vibration",
+      type: "Running Check",
+    },
+    {
+      equipment: "RCL-CR1-TRV Travel Drive Motor",
+      issue: "Greasing pending at coupling",
+      type: "Remark",
+    },
+  ],
   snapshot: {
     label: "Coal reclaimers",
     formLabel: "Material handling - Coal reclaimers",
@@ -53,6 +73,7 @@ const record: Submission = {
       },
     ],
   },
+  dayNotes: "CPP circuit greasing done",
 };
 
 async function main() {
@@ -60,11 +81,11 @@ async function main() {
   const required = [
     "Working section: Material handling - Coal reclaimers",
     "Day notes",
-    "(none)",
+    "CPP circuit greasing done",
     "RCL-CR1-TRV",
-    "[PENDING]",
-    "Supply Voltage (V): —",
-    "— · Motor noise & vibration",
+    "[RUNNING]",
+    "Supply Voltage (V): 415",
+    "FAIL · Motor noise & vibration",
     "Submitted:",
   ];
   const missing = required.filter((s) => !text.includes(s));
@@ -73,11 +94,32 @@ async function main() {
     throw new Error(`formatFullRound omitted: ${missing.join(" | ")}`);
   }
 
+  const summary = formatRoundSummary(record);
+  const summaryNeed = [
+    "Written comments",
+    "CPP circuit greasing done",
+    "Greasing pending at coupling",
+    "Fault comments",
+    "Motor noise & vibration",
+  ];
+  const summaryMissing = summaryNeed.filter((s) => !summary.includes(s));
+  if (summaryMissing.length) {
+    console.error(summary);
+    throw new Error(`formatRoundSummary omitted: ${summaryMissing.join(" | ")}`);
+  }
+  if (summary.includes("Supply Voltage")) {
+    throw new Error("Telegram summary must not repeat full-form readings");
+  }
+  const remarkHits = summary.split("Greasing pending at coupling").length - 1;
+  if (remarkHits !== 1) {
+    throw new Error(`Written remark should appear once, found ${remarkHits}`);
+  }
+
   const bytes = await buildSubmissionPdf(record, []);
   if (bytes.length < 800) throw new Error("PDF too small");
   const { writeFileSync } = await import("fs");
   writeFileSync("/tmp/full-record-pending.pdf", bytes);
-  console.log("ok", { textChars: text.length, pdfBytes: bytes.length });
+  console.log("ok", { textChars: text.length, summaryChars: summary.length, pdfBytes: bytes.length });
 }
 
 void main();

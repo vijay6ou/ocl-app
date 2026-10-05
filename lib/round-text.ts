@@ -122,6 +122,59 @@ export function formatFullRound(
   return lines.join("\n");
 }
 
+function equipmentLabel(tag: string, name: string) {
+  return `${tag} ${name}`.trim();
+}
+
+/** Compact Telegram text: written comments + faults. Full readings stay in the PDF. */
+export function formatRoundSummary(record: Submission): string {
+  const lines: string[] = [roundHeader(record), "", "Summary", "───────", ""];
+
+  lines.push("Written comments");
+  const notes = record.dayNotes?.trim();
+  lines.push(notes ? `Day notes\n${notes}` : "Day notes: (none)");
+  if (record.dayPhotos?.length) {
+    lines.push(`${record.dayPhotos.length} photo(s) attached to the day note`);
+  }
+
+  const remarkLines: string[] = [];
+  for (const item of record.snapshot.equip) {
+    const text = record.equip[item.id]?.remarks?.trim();
+    if (text) remarkLines.push(`• ${equipmentLabel(item.tag, item.name)} — ${text}`);
+  }
+  for (const group of record.snapshot.common) {
+    for (const item of group.items) {
+      const text = record.common[item.id]?.remarks?.trim();
+      if (!text) continue;
+      const alreadyFault = record.fails.some(
+        (fail) =>
+          fail.type === "Common Device" &&
+          fail.equipment === equipmentLabel(item.tag, item.device) &&
+          fail.issue === text
+      );
+      if (!alreadyFault) remarkLines.push(`• ${equipmentLabel(item.tag, item.device)} — ${text}`);
+    }
+  }
+  if (remarkLines.length) {
+    lines.push("");
+    lines.push("Equipment remarks");
+    lines.push(...remarkLines);
+  }
+
+  lines.push("");
+  lines.push("Fault comments");
+  const faults = record.fails.filter((fail) => fail.type !== "Remark");
+  if (faults.length === 0) {
+    lines.push("No FAIL checks recorded.");
+  } else {
+    for (const fail of faults) {
+      lines.push(`• ${fail.equipment} — ${fail.issue} (${fail.type})`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 /** Faults and wrong items only — FAIL checks, defect remarks, pending machines. */
 export function formatFaultsOnly(record: Submission): string {
   const lines: string[] = [

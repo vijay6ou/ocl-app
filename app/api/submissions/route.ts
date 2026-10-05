@@ -113,22 +113,27 @@ export async function POST(req: Request) {
     }
 
     const selfieId = (body.selfieId ?? "").trim();
-    if (!selfieId) {
+    const pin = (body.pin ?? "").trim();
+    let selfie: PhotoRef | undefined;
+    if (selfieId) {
+      const selfiePhoto = await getPhoto(selfieId);
+      if (!selfiePhoto || selfiePhoto.meta.uploadedBy !== user.id || selfiePhoto.meta.kind !== "selfie") {
+        return NextResponse.json(
+          { error: "The submit selfie is missing. Take it again on the front camera." },
+          { status: 400 }
+        );
+      }
+      selfie = { id: selfieId, kind: "selfie" };
+    } else if (pin) {
+      const pinCheck = await verifyPin(user.id, pin);
+      if (!pinCheck.ok) {
+        return NextResponse.json({ error: pinCheck.error }, { status: 401 });
+      }
+    } else {
       return NextResponse.json(
-        { error: "Take a selfie on the front camera before submitting." },
+        { error: "Confirm with a selfie or your 4-digit PIN." },
         { status: 400 }
       );
-    }
-    const selfiePhoto = await getPhoto(selfieId);
-    if (!selfiePhoto || selfiePhoto.meta.uploadedBy !== user.id || selfiePhoto.meta.kind !== "selfie") {
-      return NextResponse.json(
-        { error: "The submit selfie is missing. Take it again on the front camera." },
-        { status: 400 }
-      );
-    }
-    const pinCheck = await verifyPin(user.id, body.pin ?? "");
-    if (!pinCheck.ok) {
-      return NextResponse.json({ error: pinCheck.error }, { status: 401 });
     }
 
     const catalogue = await getCatalogue();
@@ -182,7 +187,7 @@ export async function POST(req: Request) {
         equip: day.equip,
         common: day.common,
       },
-      selfie: { id: selfieId, kind: "selfie" },
+      selfie,
       dayNotes: (body.dayNotes ?? "").trim(),
       dayPhotos: body.dayPhotos ?? [],
     };
