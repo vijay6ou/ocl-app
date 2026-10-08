@@ -1,5 +1,8 @@
 import { formatFullRound, formatRoundSummary } from "@/lib/round-text";
 import { buildSubmissionPdf } from "@/lib/report-pdf";
+import { flattenSubmissionRows } from "@/lib/round-rows";
+import { buildRoundsWorkbook } from "@/lib/round-workbook";
+import { NOT_FILLED, NOT_WORKED } from "@/lib/fill-status";
 import type { Submission } from "@/lib/types";
 
 const record: Submission = {
@@ -33,6 +36,14 @@ const record: Submission = {
       remarks: "Greasing pending at coupling",
       photos: [],
     },
+    m2: {
+      status: null,
+      params: {},
+      checks: {},
+      stoppedChecks: {},
+      remarks: "",
+      photos: [],
+    },
   },
   common: {},
   fails: [
@@ -60,6 +71,17 @@ const record: Submission = {
           { id: "v", label: "Supply Voltage", unit: "V", phases: false, limit: "415 +/- 6%" },
         ],
         runningChecks: ["Motor noise & vibration"],
+        stoppedChecks: ["Isolated and locked out"],
+      },
+      {
+        id: "m2",
+        tag: "RCL-CR1-BLT",
+        name: "Yard Belt Motor",
+        isHT: false,
+        runningParams: [
+          { id: "v", label: "Supply Voltage", unit: "V", phases: false, limit: "415 +/- 6%" },
+        ],
+        runningChecks: ["Belt sway switch"],
         stoppedChecks: ["Isolated and locked out"],
       },
     ],
@@ -115,11 +137,37 @@ async function main() {
     throw new Error(`Written remark should appear once, found ${remarkHits}`);
   }
 
+  if (!text.includes("PENDING — not worked this round")) {
+    throw new Error("formatFullRound must call out PENDING machines");
+  }
+  if (!text.includes(`${NOT_WORKED} · Belt sway switch`)) {
+    throw new Error("unanswered checks must be Not worked");
+  }
+
   const bytes = await buildSubmissionPdf(record, []);
   if (bytes.length < 800) throw new Error("PDF too small");
   const { writeFileSync } = await import("fs");
   writeFileSync("/tmp/full-record-pending.pdf", bytes);
-  console.log("ok", { textChars: text.length, summaryChars: summary.length, pdfBytes: bytes.length });
+
+  const rows = flattenSubmissionRows(record);
+  const pendingCheck = rows.find((r) => r.item === "Belt sway switch");
+  if (pendingCheck?.result !== NOT_WORKED) {
+    throw new Error("Excel rows must mark unanswered checks as Not worked");
+  }
+  const filledParam = rows.find((r) => r.item.startsWith("Supply Voltage") && r.equipmentId === "RCL-CR1-TRV");
+  if (filledParam?.value !== "415") throw new Error("filled param missing in Excel rows");
+  const emptyParam = rows.find((r) => r.item.startsWith("Supply Voltage") && r.equipmentId === "RCL-CR1-BLT");
+  if (emptyParam?.value !== NOT_FILLED) throw new Error("unfilled param must be Not filled");
+  const xlsx = await buildRoundsWorkbook([record]);
+  if (xlsx.length < 2000) throw new Error("xlsx too small");
+  writeFileSync("/tmp/rounds-sample.xlsx", xlsx);
+  console.log("ok", {
+    textChars: text.length,
+    summaryChars: summary.length,
+    pdfBytes: bytes.length,
+    excelBytes: xlsx.length,
+    excelRows: rows.length,
+  });
 }
 
 void main();

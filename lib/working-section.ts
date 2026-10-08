@@ -32,6 +32,8 @@ export function weekdaySection(day: string) {
 export function pdfSafe(text: string) {
   return String(text ?? "")
     .replace(/[–—]/g, "-")
+    .replace(/[·•]/g, " | ")
+    .replace(/…/g, "...")
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/°/g, " deg")
@@ -39,5 +41,5 @@ export function pdfSafe(text: string) {
     .replace(/≥/g, ">=")
     .replace(/±/g, "+/-")
     .replace(/µ/g, "u")
-    .replace(/[^\t\n\r\x20-\x7E]/g, "?");
+    .replace(/[^\t\n\r\x20-\x7E]/g, " ");
 }

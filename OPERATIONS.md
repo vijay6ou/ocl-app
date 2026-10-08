@@ -152,7 +152,9 @@ Plant app is **1.17.0** (versionCode 19). Build with `./gradlew :app:publishToPl
 from `android/` after installing SDK 34. Print / share PDF downloads the same
 pdf-lib report that Discord attaches (`GET /api/submissions/{id}/pdf`), then
 uses `ACTION_SEND` + FileProvider or PrintManager on that file. Do not rasterize
-the WebView — that path only painted the first screen of the round.
+the WebView — that path only painted the first screen of the round. The PDF
+marks skipped items as Not filled / Not worked. Records → Download Excel is
+`GET /api/submissions/export.xlsx` (same 30-day / assignment filters).
 
 **Location check-ins.**
 Technicians (and any signed-in session) post lat/lng every 15 minutes to

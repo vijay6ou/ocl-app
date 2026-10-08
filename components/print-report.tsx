@@ -1,4 +1,12 @@
 import { Badge } from "@/components/ui/badge";
+import {
+  checkResultLabel,
+  countChecks,
+  countParams,
+  machineStatusLabel,
+  machineTallyLine,
+  paramValueLabel,
+} from "@/lib/fill-status";
 import { workingSectionLabel } from "@/lib/working-section";
 import { formatSubmitTimestamp, submitInstant } from "@/lib/submit-time";
 import type { Submission } from "@/lib/types";
@@ -103,36 +111,46 @@ export function PrintReport({ record }: { record: Submission }) {
         <h3 className="font-heading font-semibold">Equipment</h3>
         {snapshot.equip.map((item) => {
           const st = record.equip[item.id];
-          const status =
-            st?.status === "R" ? "RUNNING" : st?.status === "S" ? "STOPPED" : "PENDING";
+          const status = machineStatusLabel(st?.status);
+          const pending = !st?.status;
           const stopped = st?.status === "S";
           const checks = stopped ? item.stoppedChecks : item.runningChecks;
           const answers = stopped ? st?.stoppedChecks : st?.checks;
+          const tally = machineTallyLine({
+            pending,
+            stopped,
+            params: countParams(item.runningParams, st?.params),
+            checks: countChecks(answers, checks.length),
+          });
           return (
-            <div key={item.id} className="break-inside-avoid rounded-lg border p-3">
+            <div
+              key={item.id}
+              className={`break-inside-avoid rounded-lg border p-3 ${pending ? "border-amber-300 bg-amber-50/60" : ""}`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="font-mono text-xs text-zinc-500">{item.tag}</span>
                   {item.isHT ? <Badge className="ml-2">HT</Badge> : null}
                   <div className="font-medium">{item.name}</div>
+                  <p className="text-xs text-zinc-500">{tally}</p>
                 </div>
-                <Badge variant="outline">{status}</Badge>
+                <Badge variant={pending ? "outline" : "secondary"}>{status}</Badge>
               </div>
               {!stopped && item.runningParams.length > 0 ? (
                 <table className="mt-2 w-full text-xs">
                   <tbody>
                     {item.runningParams.map((p) => {
-                      const v = st?.params[p.id] ?? {};
-                      const shown = p.phases
-                        ? `R ${v.r || "—"} / Y ${v.y || "—"} / B ${v.b || "—"}`
-                        : v.v || "—";
+                      const shown = paramValueLabel(p, st?.params[p.id]);
+                      const skipped = shown === "Not filled";
                       return (
                         <tr key={p.id} className="border-t">
                           <td className="py-1">
                             {p.label}
                             {p.unit ? ` (${p.unit})` : ""}
                           </td>
-                          <td className="py-1 text-right">{shown}</td>
+                          <td className={`py-1 text-right ${skipped ? "italic text-zinc-500" : ""}`}>
+                            {shown}
+                          </td>
                           <td className="py-1 text-right text-zinc-500">{p.limit}</td>
                         </tr>
                       );
@@ -143,11 +161,19 @@ export function PrintReport({ record }: { record: Submission }) {
               {checks.length > 0 ? (
                 <ul className="mt-2 space-y-1 text-xs">
                   {checks.map((c, i) => {
-                    const ans = answers?.[String(i)];
+                    const mark = checkResultLabel(answers?.[String(i)]);
                     return (
                       <li key={i}>
-                        <span className={ans === "fail" ? "text-red-700" : ""}>
-                          {ans === "ok" ? "OK" : ans === "fail" ? "FAIL" : "—"} · {c}
+                        <span
+                          className={
+                            mark === "FAIL"
+                              ? "text-red-700"
+                              : mark === "Not worked"
+                                ? "italic text-zinc-500"
+                                : ""
+                          }
+                        >
+                          {mark} · {c}
                         </span>
                       </li>
                     );
@@ -183,13 +209,21 @@ export function PrintReport({ record }: { record: Submission }) {
             <ul className="mt-1 space-y-1">
               {group.items.map((item) => {
                 const st = record.common[item.id];
-                const ans = st?.ok === "ok" ? "OK" : st?.ok === "fail" ? "FAIL" : "—";
+                const ans = checkResultLabel(st?.ok);
                 return (
                   <li key={item.id} className="flex flex-wrap justify-between gap-2 text-xs">
                     <span>
                       <span className="font-mono">{item.tag}</span> {item.device}
                     </span>
-                    <span className={st?.ok === "fail" ? "text-red-700" : ""}>
+                    <span
+                      className={
+                        st?.ok === "fail"
+                          ? "text-red-700"
+                          : ans === "Not worked"
+                            ? "italic text-zinc-500"
+                            : ""
+                      }
+                    >
                       {ans}
                       {st?.remarks ? ` · ${st.remarks}` : ""}
                     </span>

@@ -1,18 +1,14 @@
-import { workingSectionLabel } from "@/lib/working-section";
+import {
+  checkResultLabel,
+  countChecks,
+  countParams,
+  machineStatusLabel,
+  machineTallyLine,
+  paramValueLabel,
+} from "@/lib/fill-status";
 import { formatSubmitTimestamp, submitInstant } from "@/lib/submit-time";
 import type { Submission } from "@/lib/types";
-
-function yn(value: string | null | undefined) {
-  if (value === "ok") return "OK";
-  if (value === "fail") return "FAIL";
-  return "—";
-}
-
-function statusLabel(status: "R" | "S" | null | undefined) {
-  if (status === "R") return "RUNNING";
-  if (status === "S") return "STOPPED";
-  return "PENDING";
-}
+import { workingSectionLabel } from "@/lib/working-section";
 
 export function roundHeader(record: Submission) {
   const section = workingSectionLabel(record.meta);
@@ -68,27 +64,33 @@ export function formatFullRound(
   lines.push("─────────");
   for (const item of record.snapshot.equip) {
     const st = record.equip[item.id];
+    const pending = !st?.status;
     const stopped = st?.status === "S";
+    const checks = stopped ? item.stoppedChecks : item.runningChecks;
+    const answers = stopped ? st?.stoppedChecks : st?.checks;
     lines.push("");
     lines.push(
-      `${item.tag}${item.isHT ? "  HT" : ""}  ${item.name}  [${statusLabel(st?.status)}]`
+      `${item.tag}${item.isHT ? "  HT" : ""}  ${item.name}  [${machineStatusLabel(st?.status)}]`
+    );
+    lines.push(
+      `  ${machineTallyLine({
+        pending,
+        stopped,
+        params: countParams(item.runningParams, st?.params),
+        checks: countChecks(answers, checks.length),
+      })}`
     );
     if (!stopped && item.runningParams.length > 0) {
       for (const param of item.runningParams) {
-        const v = st?.params[param.id] ?? {};
-        const shown = param.phases
-          ? `R ${v.r || "—"} / Y ${v.y || "—"} / B ${v.b || "—"}`
-          : v.v || "—";
+        const shown = paramValueLabel(param, st?.params[param.id]);
         const unit = param.unit ? ` (${param.unit})` : "";
         const limit = param.limit ? `  limit ${param.limit}` : "";
         lines.push(`  ${param.label}${unit}: ${shown}${limit}`);
       }
     }
-    const checks = stopped ? item.stoppedChecks : item.runningChecks;
-    const answers = stopped ? st?.stoppedChecks : st?.checks;
     if (checks.length > 0) {
       for (let i = 0; i < checks.length; i += 1) {
-        lines.push(`  ${yn(answers?.[String(i)])} · ${checks[i]}`);
+        lines.push(`  ${checkResultLabel(answers?.[String(i)])} · ${checks[i]}`);
       }
     }
     if (st?.remarks) lines.push(`  Remarks: ${st.remarks}`);
@@ -106,7 +108,7 @@ export function formatFullRound(
       const st = record.common[item.id];
       const extra = st?.remarks ? ` · ${st.remarks}` : "";
       const photos = st?.photos?.length ? ` · ${st.photos.length} photo(s)` : "";
-      lines.push(`  ${item.tag}  ${item.device}  ${yn(st?.ok)}${extra}${photos}`);
+      lines.push(`  ${item.tag}  ${item.device}  ${checkResultLabel(st?.ok)}${extra}${photos}`);
       lines.push(`    ${item.check}`);
     }
   }

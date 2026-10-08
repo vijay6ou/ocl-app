@@ -3,7 +3,8 @@ import { jsonError, requireUser } from "@/lib/auth";
 import { notifySubmission } from "@/lib/notify";
 import { canSeeArea, canonicalAreaId, pathForArea } from "@/lib/hierarchy";
 import { isSafeSectionId } from "@/lib/section-ids";
-import { getCatalogue, getPhoto, listSubmissions, saveSubmission, verifyPin } from "@/lib/store";
+import { historyFilterFrom, queryVisibleSubmissions } from "@/lib/record-query";
+import { getCatalogue, getPhoto, saveSubmission, verifyPin } from "@/lib/store";
 import type {
   CommonState,
   EquipState,
@@ -13,7 +14,6 @@ import type {
 } from "@/lib/types";
 import { SHIFT_OPTIONS } from "@/lib/types";
 import { deriveFails, isComplete, progressForDay } from "@/lib/progress";
-import { defaultHistoryRange, recordInDateRange } from "@/lib/submit-time";
 
 export const dynamic = "force-dynamic";
 
@@ -25,44 +25,7 @@ export async function GET(req: Request) {
   try {
     const user = await requireUser();
     const url = new URL(req.url);
-    const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
-    const day = url.searchParams.get("day");
-    const shift = url.searchParams.get("shift");
-    const from = url.searchParams.get("from");
-    const to = url.searchParams.get("to");
-    const failures = url.searchParams.get("failures") === "1";
-
-    let rows = await listSubmissions();
-    const catalogue = await getCatalogue();
-    if (user.role !== "admin") {
-      rows = rows.filter((r) => canSeeArea(user, catalogue, r.meta.day));
-    }
-    const range = defaultHistoryRange();
-    const fromDate = from && from.trim() ? from : range.from;
-    const toDate = to && to.trim() ? to : range.to;
-    rows = rows.filter((r) => recordInDateRange(r, fromDate, toDate));
-    if (day && isSafeSectionId(day)) {
-      rows = rows.filter((r) => canonicalAreaId(r.meta.day) === canonicalAreaId(day));
-    }
-    if (shift) rows = rows.filter((r) => r.meta.shift === shift);
-    if (failures) rows = rows.filter((r) => r.fails.length > 0);
-    if (q) {
-      rows = rows.filter((r) => {
-        const hay = [
-          r.meta.tech,
-          r.meta.sup,
-          r.meta.dayLabel,
-          r.meta.form,
-          r.id,
-          ...r.fails.map((f) => `${f.equipment} ${f.issue}`),
-          ...Object.values(r.equip).map((e) => e.remarks),
-          r.dayNotes ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
-        return hay.includes(q);
-      });
-    }
+    const rows = await queryVisibleSubmissions(user, historyFilterFrom(url));
 
     return NextResponse.json({
       submissions: rows.map((r) => ({

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Printer } from "lucide-react";
+import { Printer, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/states";
@@ -59,7 +59,8 @@ export default async function HistoryPage({
         <h1 className="font-heading text-3xl font-semibold">Cloud records</h1>
         <p className="text-sm text-muted-foreground">
           Search and open saved cloud records from the last 30 days. Technicians and admin see
-          the same archive. Open a row to reprint or save PDF.
+          the same archive. Open a row to reprint or save PDF. Download Excel to compare readings
+          and checks across dates — unfilled items are labelled Not filled / Not worked.
         </p>
       </div>
 
@@ -121,6 +122,26 @@ export default async function HistoryPage({
         </label>
         <Button type="submit" className="lg:col-span-1">
           Search
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="lg:col-span-6"
+          render={
+            <a
+              href={`/api/submissions/export.xlsx?${new URLSearchParams({
+                ...(q ? { q: String(sp.q ?? "") } : {}),
+                ...(day ? { day } : {}),
+                ...(shift ? { shift } : {}),
+                from,
+                to,
+                ...(failures ? { failures: "1" } : {}),
+              }).toString()}`}
+            />
+          }
+        >
+          <Sheet />
+          Download Excel
         </Button>
       </form>
 
